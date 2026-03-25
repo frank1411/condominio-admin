@@ -15,8 +15,8 @@ export async function createContext(
 
   try {
     user = await sdk.authenticateRequest(opts.req);
-    // Verificar que el usuario esté activo
-    if (user && !user.isActive) {
+    // Verificar que el usuario esté activo y aprobado
+    if (user && (!user.isActive || user.approvalStatus !== 'approved')) {
       user = null;
     }
   } catch (error) {

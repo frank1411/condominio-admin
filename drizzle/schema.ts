@@ -23,7 +23,8 @@ export const users = mysqlTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   apartmentId: int("apartmentId"), // FK a apartments
-  isApproved: boolean("isApproved").default(false), // Debe ser aprobado por admin
+  isApproved: boolean("isApproved").default(false), // DEPRECATED, usar approvalStatus
+  approvalStatus: mysqlEnum("approvalStatus", ["pending", "approved", "rejected"]).default("pending"), // Estado de aprobación
   approvedBy: int("approvedBy"), // FK a users (admin que aprobó)
   approvedAt: timestamp("approvedAt"),
   rejectionReason: text("rejectionReason"), // Razón si fue rechazado

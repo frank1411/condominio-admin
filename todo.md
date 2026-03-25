@@ -141,3 +141,10 @@
 - [x] Actualizar cálculo de total de apartamentos desde tabla apartments
 - [x] Actualizar cálculo de "Al día" y "Con deuda"
 - [x] Probar que los totales sean correctos (30, 30, 0, $0.00)
+
+
+## Fase 11 - Corrección de Bug de Solicitudes
+- [x] Auditar API de rechazo de solicitudes
+- [x] Auditar frontend para verificar filtrado
+- [x] Corregir API o frontend según sea necesario
+- [x] Probar que solicitudes rechazadas desaparecen

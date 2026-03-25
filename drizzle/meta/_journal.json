@@ -43,6 +43,13 @@
       "when": 1774408942493,
       "tag": "0005_luxuriant_vulcan",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1774410356512,
+      "tag": "0006_funny_wolverine",
+      "breakpoints": true
     }
   ]
 }

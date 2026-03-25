@@ -362,6 +362,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         await db.updateUser(input.userId, {
           isApproved: true,
+          approvalStatus: 'approved',
           approvedBy: ctx.user.id,
           approvedAt: new Date(),
         });
@@ -385,6 +386,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         await db.updateUser(input.userId, {
           isApproved: false,
+          approvalStatus: 'rejected',
           rejectionReason: input.reason,
         });
         
