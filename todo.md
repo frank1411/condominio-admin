@@ -116,3 +116,13 @@
 - [x] Corregir Revisión de Pagos para usar unitName de la BD
 - [x] Corregir Gestión de Solicitudes para usar unitName de la BD
 - [x] Auditar y corregir todas las secciones
+
+
+## Fase 8 - Mejoras de Gestión de Usuarios
+- [x] Agregar campo isActive a tabla de usuarios
+- [x] Crear API para cambiar rol de usuario
+- [x] Crear API para eliminar usuario
+- [x] Crear API para activar/desactivar usuario
+- [x] Validar isActive en login
+- [x] Mejorar UI con botones de acción
+- [x] Probar todas las funcionalidades

@@ -388,6 +388,62 @@ export const appRouter = router({
 
         return { success: true };
       }),
+
+    changeRole: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        newRole: z.enum(["admin", "user"]),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await db.changeUserRole(input.userId, input.newRole);
+        
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: "change_role",
+          entityType: "user",
+          entityId: input.userId,
+          details: `Rol cambiado a ${input.newRole}`,
+        });
+
+        return { success: true };
+      }),
+
+    delete: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await db.deleteUser(input.userId);
+        
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: "delete_user",
+          entityType: "user",
+          entityId: input.userId,
+          details: "Usuario eliminado del sistema",
+        });
+
+        return { success: true };
+      }),
+
+    toggleActive: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        isActive: z.boolean(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await db.toggleUserActive(input.userId, input.isActive);
+        
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: input.isActive ? "activate_user" : "deactivate_user",
+          entityType: "user",
+          entityId: input.userId,
+          details: `Usuario ${input.isActive ? "activado" : "desactivado"}`,
+        });
+
+        return { success: true };
+      }),
   }),
 
   // ===== GESTIÓN DE RECORDATORIOS =====

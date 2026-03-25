@@ -15,6 +15,10 @@ export async function createContext(
 
   try {
     user = await sdk.authenticateRequest(opts.req);
+    // Verificar que el usuario esté activo
+    if (user && !user.isActive) {
+      user = null;
+    }
   } catch (error) {
     // Authentication is optional for public procedures.
     user = null;

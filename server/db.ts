@@ -534,3 +534,26 @@ export async function updateApartmentName(id: number, name: string) {
   if (!db) return null;
   return await db.update(apartments).set({ unitName: name }).where(eq(apartments.id, id));
 }
+
+
+// ============================================
+// USER MANAGEMENT FUNCTIONS
+// ============================================
+
+export async function changeUserRole(userId: number, newRole: "user" | "admin") {
+  const db = await getDb();
+  if (!db) return null;
+  return await db.update(users).set({ role: newRole }).where(eq(users.id, userId));
+}
+
+export async function deleteUser(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  return await db.delete(users).where(eq(users.id, userId));
+}
+
+export async function toggleUserActive(userId: number, isActive: boolean) {
+  const db = await getDb();
+  if (!db) return null;
+  return await db.update(users).set({ isActive }).where(eq(users.id, userId));
+}

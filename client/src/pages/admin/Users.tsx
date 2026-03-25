@@ -2,7 +2,16 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, User } from "lucide-react";
+import { Loader2, User, Trash2, Lock, Unlock, Shield, ShieldOff } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -18,7 +27,11 @@ export default function AdminUsers() {
   const { data: apartments } = trpc.apartments.list.useQuery();
   const assignApartment = trpc.users.assignApartment.useMutation();
   const updateRole = trpc.users.updateRole.useMutation();
+  const changeRole = trpc.users.changeRole.useMutation();
+  const deleteUser = trpc.users.delete.useMutation();
+  const toggleActive = trpc.users.toggleActive.useMutation();
   const [selectedUser, setSelectedUser] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   const handleAssignApartment = async (userId: number, apartmentId: number) => {
     try {
@@ -37,6 +50,37 @@ export default function AdminUsers() {
       refetch();
     } catch (error) {
       toast.error("Error al actualizar rol");
+    }
+  };
+
+  const handleChangeRole = async (userId: number, newRole: "admin" | "user") => {
+    try {
+      await changeRole.mutateAsync({ userId, newRole });
+      toast.success(`Usuario convertido a ${newRole === "admin" ? "administrador" : "usuario"}`);
+      refetch();
+    } catch (error) {
+      toast.error("Error al cambiar rol");
+    }
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    try {
+      await deleteUser.mutateAsync({ userId });
+      toast.success("Usuario eliminado");
+      setDeleteConfirm(null);
+      refetch();
+    } catch (error) {
+      toast.error("Error al eliminar usuario");
+    }
+  };
+
+  const handleToggleActive = async (userId: number, isActive: boolean) => {
+    try {
+      await toggleActive.mutateAsync({ userId, isActive });
+      toast.success(isActive ? "Usuario activado" : "Usuario desactivado");
+      refetch();
+    } catch (error) {
+      toast.error("Error al cambiar estado del usuario");
     }
   };
 
@@ -78,23 +122,7 @@ export default function AdminUsers() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    {/* Rol */}
-                    <Select
-                      value={user.role}
-                      onValueChange={(value) =>
-                        handleUpdateRole(user.id, value as "admin" | "user")
-                      }
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="user">Usuario</SelectItem>
-                        <SelectItem value="admin">Administrador</SelectItem>
-                      </SelectContent>
-                    </Select>
-
+                  <div className="flex items-center gap-2 flex-wrap">
                     {/* Apartamento */}
                     <Select
                       value={user.apartmentId?.toString() || ""}
@@ -114,9 +142,56 @@ export default function AdminUsers() {
                       </SelectContent>
                     </Select>
 
+                    {/* Cambiar Rol */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        handleChangeRole(
+                          user.id,
+                          user.role === "admin" ? "user" : "admin"
+                        )
+                      }
+                      title={user.role === "admin" ? "Convertir a usuario" : "Convertir a administrador"}
+                    >
+                      {user.role === "admin" ? (
+                        <ShieldOff className="w-4 h-4" />
+                      ) : (
+                        <Shield className="w-4 h-4" />
+                      )}
+                    </Button>
+
+                    {/* Activar/Desactivar */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleToggleActive(user.id, !user.isActive)}
+                      title={user.isActive ? "Desactivar usuario" : "Activar usuario"}
+                      className={user.isActive ? "" : "opacity-50"}
+                    >
+                      {user.isActive ? (
+                        <Unlock className="w-4 h-4" />
+                      ) : (
+                        <Lock className="w-4 h-4" />
+                      )}
+                    </Button>
+
+                    {/* Eliminar */}
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => setDeleteConfirm(user.id)}
+                      title="Eliminar usuario"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+
                     <Badge variant={user.role === "admin" ? "default" : "secondary"}>
                       {user.role === "admin" ? "Admin" : "Usuario"}
                     </Badge>
+                    {!user.isActive && (
+                      <Badge variant="destructive">Inactivo</Badge>
+                    )}
                   </div>
                 </div>
               ))
@@ -126,6 +201,31 @@ export default function AdminUsers() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Diálogo de confirmación de eliminación */}
+      <AlertDialog open={deleteConfirm !== null} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar usuario</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-3 justify-end">
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteConfirm) {
+                  handleDeleteUser(deleteConfirm);
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

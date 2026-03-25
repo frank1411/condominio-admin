@@ -27,6 +27,7 @@ export const users = mysqlTable("users", {
   approvedBy: int("approvedBy"), // FK a users (admin que aprobó)
   approvedAt: timestamp("approvedAt"),
   rejectionReason: text("rejectionReason"), // Razón si fue rechazado
+  isActive: boolean("isActive").default(true), // Usuario activo/inactivo
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
