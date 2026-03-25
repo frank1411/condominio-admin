@@ -108,7 +108,7 @@ export default function AdminUsers() {
                       <SelectContent>
                         {apartments?.map((apt) => (
                           <SelectItem key={apt.id} value={apt.id.toString()}>
-                            Apt. {apt.apartmentNumber}
+                            {apt.unitName || `Apt. ${apt.apartmentNumber}`}
                           </SelectItem>
                         ))}
                       </SelectContent>

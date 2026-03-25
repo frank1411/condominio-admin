@@ -227,12 +227,45 @@ export async function getPaymentsByApartment(apartmentId: number, month?: string
   const db = await getDb();
   if (!db) return [];
   
-  let query = db.select().from(payments).where(eq(payments.apartmentId, apartmentId));
+  const { eq: drizzleEq, and: drizzleAnd } = await import('drizzle-orm');
+  let query = db
+    .select({
+      id: payments.id,
+      userId: payments.userId,
+      apartmentId: payments.apartmentId,
+      unitName: apartments.unitName,
+      month: payments.month,
+      voucherNumber: payments.voucherNumber,
+      voucherImage: payments.voucherImage,
+      amount: payments.amount,
+      currency: payments.currency,
+      status: payments.status,
+      createdAt: payments.createdAt,
+      updatedAt: payments.updatedAt,
+    })
+    .from(payments)
+    .innerJoin(apartments, drizzleEq(payments.apartmentId, apartments.id))
+    .where(drizzleEq(payments.apartmentId, apartmentId));
   
   if (month) {
-    query = db.select().from(payments).where(
-      and(eq(payments.apartmentId, apartmentId), eq(payments.month, month))
-    );
+    query = db
+      .select({
+        id: payments.id,
+        userId: payments.userId,
+        apartmentId: payments.apartmentId,
+        unitName: apartments.unitName,
+        month: payments.month,
+        voucherNumber: payments.voucherNumber,
+        voucherImage: payments.voucherImage,
+        amount: payments.amount,
+        currency: payments.currency,
+        status: payments.status,
+        createdAt: payments.createdAt,
+        updatedAt: payments.updatedAt,
+      })
+      .from(payments)
+      .innerJoin(apartments, drizzleEq(payments.apartmentId, apartments.id))
+      .where(drizzleAnd(drizzleEq(payments.apartmentId, apartmentId), drizzleEq(payments.month, month)));
   }
   
   return await query;
@@ -241,7 +274,25 @@ export async function getPaymentsByApartment(apartmentId: number, month?: string
 export async function getPendingPayments() {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(payments).where(eq(payments.status, "pending"));
+  const { eq: drizzleEq } = await import('drizzle-orm');
+  return await db
+    .select({
+      id: payments.id,
+      userId: payments.userId,
+      apartmentId: payments.apartmentId,
+      unitName: apartments.unitName,
+      month: payments.month,
+      voucherNumber: payments.voucherNumber,
+      voucherImage: payments.voucherImage,
+      amount: payments.amount,
+      currency: payments.currency,
+      status: payments.status,
+      createdAt: payments.createdAt,
+      updatedAt: payments.updatedAt,
+    })
+    .from(payments)
+    .innerJoin(apartments, drizzleEq(payments.apartmentId, apartments.id))
+    .where(drizzleEq(payments.status, "pending"));
 }
 
 export async function updatePaymentStatus(id: number, status: "approved" | "rejected", reviewedBy: number, notes?: string) {
@@ -290,7 +341,27 @@ export async function createOrUpdateMonthlyDebt(data: typeof monthlyDebts.$infer
 export async function getDebtsByMonth(month: string) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(monthlyDebts).where(eq(monthlyDebts.month, month));
+  const { eq: drizzleEq } = await import('drizzle-orm');
+  const result = await db
+    .select({
+      id: monthlyDebts.id,
+      apartmentId: monthlyDebts.apartmentId,
+      unitName: apartments.unitName,
+      month: monthlyDebts.month,
+      baseFeeAmount: monthlyDebts.baseFeeAmount,
+      additionalCharges: monthlyDebts.additionalCharges,
+      totalDue: monthlyDebts.totalDue,
+      totalPaid: monthlyDebts.totalPaid,
+      pendingAmount: monthlyDebts.pendingAmount,
+      currency: monthlyDebts.currency,
+      isPaid: monthlyDebts.isPaid,
+      createdAt: monthlyDebts.createdAt,
+      updatedAt: monthlyDebts.updatedAt,
+    })
+    .from(monthlyDebts)
+    .innerJoin(apartments, drizzleEq(monthlyDebts.apartmentId, apartments.id))
+    .where(drizzleEq(monthlyDebts.month, month));
+  return result;
 }
 
 export async function getAllUserDebts(userId: number) {
@@ -300,7 +371,27 @@ export async function getAllUserDebts(userId: number) {
   const user = await getUserById(userId);
   if (!user || !user.apartmentId) return [];
   
-  return await db.select().from(monthlyDebts).where(eq(monthlyDebts.apartmentId, user.apartmentId));
+  const { eq: drizzleEq } = await import('drizzle-orm');
+  const result = await db
+    .select({
+      id: monthlyDebts.id,
+      apartmentId: monthlyDebts.apartmentId,
+      unitName: apartments.unitName,
+      month: monthlyDebts.month,
+      baseFeeAmount: monthlyDebts.baseFeeAmount,
+      additionalCharges: monthlyDebts.additionalCharges,
+      totalDue: monthlyDebts.totalDue,
+      totalPaid: monthlyDebts.totalPaid,
+      pendingAmount: monthlyDebts.pendingAmount,
+      currency: monthlyDebts.currency,
+      isPaid: monthlyDebts.isPaid,
+      createdAt: monthlyDebts.createdAt,
+      updatedAt: monthlyDebts.updatedAt,
+    })
+    .from(monthlyDebts)
+    .innerJoin(apartments, drizzleEq(monthlyDebts.apartmentId, apartments.id))
+    .where(drizzleEq(monthlyDebts.apartmentId, user.apartmentId));
+  return result;
 }
 
 export async function createReminder(data: typeof reminders.$inferInsert) {

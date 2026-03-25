@@ -88,7 +88,7 @@ export default function AdminDashboard() {
                 className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
               >
                 <div className="flex-1">
-                  <p className="font-medium">Apartamento {debt.apartmentId}</p>
+                  <p className="font-medium">{debt.unitName || `Apartamento ${debt.apartmentId}`}</p>
                   <p className="text-sm text-gray-600">
                     Debido: ${parseFloat(debt.totalDue).toFixed(2)} {debt.currency}
                   </p>

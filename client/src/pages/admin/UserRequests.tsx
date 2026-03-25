@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 export default function AdminUserRequests() {
   const { data: pendingUsers, isLoading, refetch } = trpc.users.pending.useQuery();
+  const { data: apartments } = trpc.apartments.list.useQuery();
   const approveUser = trpc.users.approve.useMutation();
   const rejectUser = trpc.users.reject.useMutation();
   const [selectedUser, setSelectedUser] = useState<number | null>(null);
@@ -89,7 +90,11 @@ export default function AdminUserRequests() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Apartamento</p>
-                    <p className="font-medium">{user.apartmentId ? `Apt. ${user.apartmentId}` : "No asignado"}</p>
+                    <p className="font-medium">
+                      {user.apartmentId
+                        ? apartments?.find(a => a.id === user.apartmentId)?.unitName || `Apt. ${user.apartmentId}`
+                        : "No asignado"}
+                    </p>
                   </div>
                 </div>
 

@@ -68,7 +68,7 @@ export default function AdminPaymentReview() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Apartamento {payment.apartmentId}</CardTitle>
+                    <CardTitle>{payment.unitName || `Apartamento ${payment.apartmentId}`}</CardTitle>
                     <CardDescription>Mes: {payment.month}</CardDescription>
                   </div>
                   <Badge variant="outline" className="bg-yellow-50">
@@ -91,7 +91,7 @@ export default function AdminPaymentReview() {
                   <div>
                     <p className="text-sm text-gray-600">Enviado</p>
                     <p className="text-sm">
-                      {new Date(payment.submittedAt).toLocaleDateString("es-ES")}
+                      {new Date(payment.createdAt).toLocaleDateString("es-ES")}
                     </p>
                   </div>
                   <div>

@@ -202,7 +202,7 @@ export default function UserPayments() {
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <p className="text-sm text-gray-600">
-                        {new Date(payment.submittedAt).toLocaleDateString("es-ES")}
+                        {new Date(payment.createdAt).toLocaleDateString("es-ES")}
                       </p>
                     </div>
                     <Badge

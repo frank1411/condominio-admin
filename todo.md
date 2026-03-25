@@ -110,7 +110,9 @@
 - [x] Verificar que generación de nombres persiste en BD
 - [x] Corregir lógica de cálculo de letra (extraer último dígito)
 - [x] Actualizar todos los nombres en la BD con patrón correcto
-- [x] Auditar dashboard para usar unitName consistentemente
-- [x] Auditar usuarios para usar unitName consistentemente
-- [x] Auditar pagos para usar unitName consistentemente
-- [x] Auditar apartamentos para usar unitName consistentemente
+- [x] Actualizar APIs para retornar unitName con JOIN a apartments
+- [x] Corregir Dashboard para usar unitName de la BD
+- [x] Corregir Gestión de Usuarios para usar unitName de la BD
+- [x] Corregir Revisión de Pagos para usar unitName de la BD
+- [x] Corregir Gestión de Solicitudes para usar unitName de la BD
+- [x] Auditar y corregir todas las secciones
