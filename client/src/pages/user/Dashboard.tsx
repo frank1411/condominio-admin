@@ -77,13 +77,8 @@ export default function UserDashboard() {
                   <div className="flex-1">
                     <p className="font-medium">Mes: {debt.month}</p>
                     <p className="text-sm text-gray-600">
-                      Mensualidad: ${parseFloat(debt.baseFeeAmount || "0").toFixed(2)}
+                      Deuda: ${parseFloat(debt.totalDue || "0").toFixed(2)}
                     </p>
-                    {parseFloat(debt.additionalCharges || "0") > 0 && (
-                      <p className="text-sm text-gray-600">
-                        Cobros adicionales: ${parseFloat(debt.additionalCharges || "0").toFixed(2)}
-                      </p>
-                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">

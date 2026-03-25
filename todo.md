@@ -164,3 +164,12 @@
 - [x] Actualizar función generateDebtsFromCharge para guardar chargeId
 - [x] Actualizar API de eliminación de cobros para eliminar deudas asociadas
 - [x] Limpiar deudas huérfanas de cobros eliminados previamente
+
+
+## Fase 14 - Simplificación del Sistema de Cobros
+- [x] Eliminar campos baseFeeAmount y additionalCharges de monthlyDebts
+- [x] Actualizar generateDebtsFromCharge para usar solo monto del cobro
+- [x] Eliminar checkbox isRecurring del formulario
+- [x] Simplificar UI para mostrar solo totalDue
+- [x] Probar que cobros de $5 generan deudas de $5
+- [x] Limpiar base de datos de deudas antiguas

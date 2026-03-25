@@ -352,8 +352,6 @@ export async function getDebtsByMonth(month: string) {
       apartmentId: monthlyDebts.apartmentId,
       unitName: apartments.unitName,
       month: monthlyDebts.month,
-      baseFeeAmount: monthlyDebts.baseFeeAmount,
-      additionalCharges: monthlyDebts.additionalCharges,
       totalDue: monthlyDebts.totalDue,
       totalPaid: monthlyDebts.totalPaid,
       pendingAmount: monthlyDebts.pendingAmount,
@@ -382,8 +380,6 @@ export async function getAllUserDebts(userId: number) {
       apartmentId: monthlyDebts.apartmentId,
       unitName: apartments.unitName,
       month: monthlyDebts.month,
-      baseFeeAmount: monthlyDebts.baseFeeAmount,
-      additionalCharges: monthlyDebts.additionalCharges,
       totalDue: monthlyDebts.totalDue,
       totalPaid: monthlyDebts.totalPaid,
       pendingAmount: monthlyDebts.pendingAmount,
@@ -600,38 +596,29 @@ export async function generateDebtsFromCharge(chargeId: number) {
       if (existingDebt && existingDebt.length > 0) {
         // Actualizar deuda existente
         const debt = existingDebt[0];
-        const additionalCharges = parseFloat(debt.additionalCharges as unknown as string) + chargeAmount;
-        const totalDue = parseFloat(debt.totalDue as unknown as string) + chargeAmount;
-        const pendingAmount = parseFloat(debt.pendingAmount as unknown as string) + chargeAmount;
+          const totalDue = parseFloat(debt.totalDue as unknown as string) + chargeAmount;
+          const pendingAmount = parseFloat(debt.pendingAmount as unknown as string) + chargeAmount;
 
-        await db.update(monthlyDebts)
-          .set({
-            additionalCharges: additionalCharges.toString(),
-            totalDue: totalDue.toString(),
-            pendingAmount: pendingAmount.toString(),
-          })
+          await db.update(monthlyDebts)
+            .set({
+              totalDue: totalDue.toString(),
+              pendingAmount: pendingAmount.toString(),
+            })
           .where(eq(monthlyDebts.id, debt.id));
       } else {
         // Crear nueva deuda
-        const baseFee = parseFloat((await db.select().from(condominiumConfig).limit(1))[0]?.baseFee as unknown as string) || 0;
-        const totalDue = baseFee + chargeAmount;
-        
         await db.insert(monthlyDebts).values({
           apartmentId: chargeData.apartmentId,
           chargeId: chargeId,
           month,
-          baseFeeAmount: baseFee.toString(),
-          additionalCharges: chargeAmount.toString(),
-          totalDue: totalDue.toString(),
-          pendingAmount: totalDue.toString(),
+          totalDue: chargeAmount.toString(),
+          pendingAmount: chargeAmount.toString(),
           isPaid: false,
         });
       }
     } else {
       // Si es cobro global, generar deuda para todos los apartamentos
       const allApartments = await db.select().from(apartments);
-      const baseFee = parseFloat((await db.select().from(condominiumConfig).limit(1))[0]?.baseFee as unknown as string) || 0;
-
       for (const apt of allApartments) {
         const existingDebt = await db
           .select()
@@ -645,31 +632,25 @@ export async function generateDebtsFromCharge(chargeId: number) {
           .limit(1);
 
         if (existingDebt && existingDebt.length > 0) {
-          // Actualizar deuda existente
+          // Actualizar deuda existente: sumar el nuevo cobro
           const debt = existingDebt[0];
-          const additionalCharges = parseFloat(debt.additionalCharges as unknown as string) + chargeAmount;
           const totalDue = parseFloat(debt.totalDue as unknown as string) + chargeAmount;
           const pendingAmount = parseFloat(debt.pendingAmount as unknown as string) + chargeAmount;
 
           await db.update(monthlyDebts)
             .set({
-              additionalCharges: additionalCharges.toString(),
               totalDue: totalDue.toString(),
               pendingAmount: pendingAmount.toString(),
             })
             .where(eq(monthlyDebts.id, debt.id));
         } else {
           // Crear nueva deuda
-          const totalDue = baseFee + chargeAmount;
-          
           await db.insert(monthlyDebts).values({
             apartmentId: apt.id,
             chargeId: chargeId,
             month,
-            baseFeeAmount: baseFee.toString(),
-            additionalCharges: chargeAmount.toString(),
-            totalDue: totalDue.toString(),
-            pendingAmount: totalDue.toString(),
+            totalDue: chargeAmount.toString(),
+            pendingAmount: chargeAmount.toString(),
             isPaid: false,
           });
         }

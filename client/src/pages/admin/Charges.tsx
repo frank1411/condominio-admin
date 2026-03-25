@@ -27,7 +27,6 @@ export default function AdminCharges() {
     description: "",
     amount: "",
     currency: "USD" as "USD" | "VES",
-    isRecurring: true,
     isIndividual: false,
     apartmentId: undefined as number | undefined,
   });
@@ -47,7 +46,6 @@ export default function AdminCharges() {
         description: "",
         amount: "",
         currency: "USD",
-        isRecurring: true,
         isIndividual: false,
         apartmentId: undefined,
       });
@@ -131,17 +129,7 @@ export default function AdminCharges() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-end">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.isRecurring}
-                    onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
-                    className="w-4 h-4"
-                  />
-                  <span>¿Es mensual?</span>
-                </label>
-              </div>
+              
             </div>
 
             <div className="border-t pt-4">
@@ -221,7 +209,7 @@ export default function AdminCharges() {
                       <p className="text-sm text-gray-600">{charge.description}</p>
                     )}
                     <p className="text-sm text-gray-600 mt-1">
-                      {charge.isRecurring ? "Mensual" : "Único"} • {charge.currency}
+                      {charge.currency}
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
