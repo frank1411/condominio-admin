@@ -134,3 +134,10 @@
 - [x] Actualizar API de creación de cobros para soportar cobros individuales
 - [x] Mejorar UI del formulario de cobros con checkbox y selector
 - [x] Probar cobros individuales y globales
+
+
+## Fase 10 - Corrección de Cálculos del Dashboard
+- [x] Auditar API del dashboard para identificar problema
+- [x] Actualizar cálculo de total de apartamentos desde tabla apartments
+- [x] Actualizar cálculo de "Al día" y "Con deuda"
+- [x] Probar que los totales sean correctos (30, 30, 0, $0.00)

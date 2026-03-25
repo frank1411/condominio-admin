@@ -278,17 +278,24 @@ export const appRouter = router({
 
     dashboard: adminProcedure.query(async () => {
       const currentMonth = new Date().toISOString().slice(0, 7);
+      const allApartments = await db.getAllApartments();
       const debts = await db.getDebtsByMonth(currentMonth);
+      
+      // Calcular totales correctamente
+      const totalApartments = allApartments.length;
+      const apartmentsWithDebt = new Set(debts.filter(d => !d.isPaid).map(d => d.apartmentId));
+      const apartmentsWithoutDebt = totalApartments - apartmentsWithDebt.size;
+      const totalPending = debts.reduce((sum, d) => sum + parseFloat(d.pendingAmount), 0);
       
       return {
         currentMonth,
         debts,
         summary: {
-          total: debts.length,
-          paid: debts.filter(d => d.isPaid).length,
-          pending: debts.filter(d => !d.isPaid).length,
+          total: totalApartments,
+          paid: apartmentsWithoutDebt,
+          pending: apartmentsWithDebt.size,
           totalDue: debts.reduce((sum, d) => sum + parseFloat(d.totalDue), 0),
-          totalPending: debts.reduce((sum, d) => sum + parseFloat(d.pendingAmount), 0),
+          totalPending,
         },
       };
     }),
