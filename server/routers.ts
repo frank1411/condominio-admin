@@ -134,7 +134,7 @@ export const appRouter = router({
         isRecurring: z.boolean().default(true),
         apartmentId: z.number().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const result = await db.createCharge({
           name: input.name,
           description: input.description,
@@ -144,6 +144,17 @@ export const appRouter = router({
           isActive: true,
           apartmentId: input.apartmentId || null,
         });
+
+        if (result && result.id) {
+          await db.generateDebtsFromCharge(result.id);
+        }
+
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: "create_charge",
+          details: `Creo cobro: ${input.name}`,
+        });
+
         return { success: true };
       }),
 

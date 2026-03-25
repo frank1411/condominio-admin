@@ -200,8 +200,9 @@ export async function getAllCharges() {
 export async function createCharge(data: typeof charges.$inferInsert) {
   const db = await getDb();
   if (!db) return null;
-  const result = await db.insert(charges).values(data);
-  return result;
+  await db.insert(charges).values(data);
+  const created = await db.select().from(charges).where(eq(charges.name, data.name || '')).orderBy(desc(charges.createdAt)).limit(1);
+  return created && created.length > 0 ? created[0] : null;
 }
 
 export async function updateCharge(id: number, data: Partial<typeof charges.$inferInsert>) {
@@ -557,4 +558,121 @@ export async function toggleUserActive(userId: number, isActive: boolean) {
   const db = await getDb();
   if (!db) return null;
   return await db.update(users).set({ isActive }).where(eq(users.id, userId));
+}
+
+
+// ============================================
+// DEBT GENERATION FUNCTIONS
+// ============================================
+export async function generateDebtsFromCharge(chargeId: number) {
+  const db = await getDb();
+  if (!db) return;
+
+  try {
+    // Obtener el cobro
+    const charge = await db.select().from(charges).where(eq(charges.id, chargeId)).limit(1);
+    if (!charge || charge.length === 0) {
+      console.error(`[Debt Generation] Charge ${chargeId} not found`);
+      return;
+    }
+
+    const chargeData = charge[0];
+    const currentMonth = new Date();
+    const month = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+    const chargeAmount = parseFloat(chargeData.amount as unknown as string);
+
+    // Si es cobro individual, generar deuda solo para ese apartamento
+    if (chargeData.apartmentId) {
+      const existingDebt = await db
+        .select()
+        .from(monthlyDebts)
+        .where(
+          and(
+            eq(monthlyDebts.apartmentId, chargeData.apartmentId),
+            eq(monthlyDebts.month, month)
+          )
+        )
+        .limit(1);
+
+      if (existingDebt && existingDebt.length > 0) {
+        // Actualizar deuda existente
+        const debt = existingDebt[0];
+        const additionalCharges = parseFloat(debt.additionalCharges as unknown as string) + chargeAmount;
+        const totalDue = parseFloat(debt.totalDue as unknown as string) + chargeAmount;
+        const pendingAmount = parseFloat(debt.pendingAmount as unknown as string) + chargeAmount;
+
+        await db.update(monthlyDebts)
+          .set({
+            additionalCharges: additionalCharges.toString(),
+            totalDue: totalDue.toString(),
+            pendingAmount: pendingAmount.toString(),
+          })
+          .where(eq(monthlyDebts.id, debt.id));
+      } else {
+        // Crear nueva deuda
+        const baseFee = parseFloat((await db.select().from(condominiumConfig).limit(1))[0]?.baseFee as unknown as string) || 0;
+        const totalDue = baseFee + chargeAmount;
+        
+        await db.insert(monthlyDebts).values({
+          apartmentId: chargeData.apartmentId,
+          month,
+          baseFeeAmount: baseFee.toString(),
+          additionalCharges: chargeAmount.toString(),
+          totalDue: totalDue.toString(),
+          pendingAmount: totalDue.toString(),
+          isPaid: false,
+        });
+      }
+    } else {
+      // Si es cobro global, generar deuda para todos los apartamentos
+      const allApartments = await db.select().from(apartments);
+      const baseFee = parseFloat((await db.select().from(condominiumConfig).limit(1))[0]?.baseFee as unknown as string) || 0;
+
+      for (const apt of allApartments) {
+        const existingDebt = await db
+          .select()
+          .from(monthlyDebts)
+          .where(
+            and(
+              eq(monthlyDebts.apartmentId, apt.id),
+              eq(monthlyDebts.month, month)
+            )
+          )
+          .limit(1);
+
+        if (existingDebt && existingDebt.length > 0) {
+          // Actualizar deuda existente
+          const debt = existingDebt[0];
+          const additionalCharges = parseFloat(debt.additionalCharges as unknown as string) + chargeAmount;
+          const totalDue = parseFloat(debt.totalDue as unknown as string) + chargeAmount;
+          const pendingAmount = parseFloat(debt.pendingAmount as unknown as string) + chargeAmount;
+
+          await db.update(monthlyDebts)
+            .set({
+              additionalCharges: additionalCharges.toString(),
+              totalDue: totalDue.toString(),
+              pendingAmount: pendingAmount.toString(),
+            })
+            .where(eq(monthlyDebts.id, debt.id));
+        } else {
+          // Crear nueva deuda
+          const totalDue = baseFee + chargeAmount;
+          
+          await db.insert(monthlyDebts).values({
+            apartmentId: apt.id,
+            month,
+            baseFeeAmount: baseFee.toString(),
+            additionalCharges: chargeAmount.toString(),
+            totalDue: totalDue.toString(),
+            pendingAmount: totalDue.toString(),
+            isPaid: false,
+          });
+        }
+      }
+    }
+
+    console.log(`[Debt Generation] Successfully generated debts for charge ${chargeId}`);
+  } catch (error) {
+    console.error(`[Debt Generation] Error generating debts for charge ${chargeId}:`, error);
+  }
 }

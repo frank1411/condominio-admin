@@ -148,3 +148,11 @@
 - [x] Auditar frontend para verificar filtrado
 - [x] Corregir API o frontend según sea necesario
 - [x] Probar que solicitudes rechazadas desaparecen
+
+
+## Fase 12 - Generación Automática de Deudas
+- [x] Crear función para generar deudas a partir de cobros
+- [x] Actualizar API de creación de cobros para generar deudas
+- [x] Probar cobros globales generan deudas en todos los apartamentos
+- [x] Probar cobros individuales generan deuda en apartamento específico
+- [x] Verificar dashboard refleja deudas correctamente
