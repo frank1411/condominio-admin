@@ -1,0 +1,1 @@
+ALTER TABLE `monthlyDebts` ADD `chargeId` int;

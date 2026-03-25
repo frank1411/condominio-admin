@@ -139,6 +139,7 @@ export type InsertPayment = typeof payments.$inferInsert;
 export const monthlyDebts = mysqlTable("monthlyDebts", {
   id: int("id").autoincrement().primaryKey(),
   apartmentId: int("apartmentId").notNull(), // FK a apartments
+  chargeId: int("chargeId"), // FK a charges (para rastrear qué cobro generó esta deuda)
   month: varchar("month", { length: 7 }).notNull(), // "2026-03"
   baseFeeAmount: decimal("baseFeeAmount", { precision: 10, scale: 2 }).notNull(),
   additionalCharges: decimal("additionalCharges", { precision: 10, scale: 2 }).default("0.00"),

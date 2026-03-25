@@ -156,3 +156,11 @@
 - [x] Probar cobros globales generan deudas en todos los apartamentos
 - [x] Probar cobros individuales generan deuda en apartamento específico
 - [x] Verificar dashboard refleja deudas correctamente
+
+
+## Fase 13 - Eliminación de Deudas al Eliminar Cobros
+- [x] Verificar si existe relación entre charges y monthlyDebts
+- [x] Agregar campo chargeId a monthlyDebts si es necesario
+- [x] Actualizar función generateDebtsFromCharge para guardar chargeId
+- [x] Actualizar API de eliminación de cobros para eliminar deudas asociadas
+- [x] Limpiar deudas huérfanas de cobros eliminados previamente

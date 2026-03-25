@@ -50,6 +50,13 @@
       "when": 1774410356512,
       "tag": "0006_funny_wolverine",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1774412531598,
+      "tag": "0007_fixed_vengeance",
+      "breakpoints": true
     }
   ]
 }

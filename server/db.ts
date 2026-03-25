@@ -214,6 +214,9 @@ export async function updateCharge(id: number, data: Partial<typeof charges.$inf
 export async function deleteCharge(id: number) {
   const db = await getDb();
   if (!db) return null;
+  // Eliminar todas las deudas generadas por este cobro
+  await db.delete(monthlyDebts).where(eq(monthlyDebts.chargeId, id));
+  // Marcar el cobro como inactivo
   return await db.update(charges).set({ isActive: false }).where(eq(charges.id, id));
 }
 
@@ -615,6 +618,7 @@ export async function generateDebtsFromCharge(chargeId: number) {
         
         await db.insert(monthlyDebts).values({
           apartmentId: chargeData.apartmentId,
+          chargeId: chargeId,
           month,
           baseFeeAmount: baseFee.toString(),
           additionalCharges: chargeAmount.toString(),
@@ -660,6 +664,7 @@ export async function generateDebtsFromCharge(chargeId: number) {
           
           await db.insert(monthlyDebts).values({
             apartmentId: apt.id,
+            chargeId: chargeId,
             month,
             baseFeeAmount: baseFee.toString(),
             additionalCharges: chargeAmount.toString(),
