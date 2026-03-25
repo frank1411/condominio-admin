@@ -360,6 +360,11 @@ function numberToLetter(num: number): string {
   return String.fromCharCode(64 + num); // 65 es 'A' en ASCII
 }
 
+// Función para generar el número de piso inteligente (PB para piso 0, números para otros)
+function getSmartFloorNumber(floorNumber: number): string {
+  return floorNumber === 0 ? "PB" : floorNumber.toString();
+}
+
 export function generateApartmentName(
   pattern: string,
   floorNumber: number,
@@ -367,8 +372,11 @@ export function generateApartmentName(
   apartmentNumber: number
 ): string {
   const letra = numberToLetter(apartmentNumber);
+  const smartFloorNumber = getSmartFloorNumber(floorNumber);
+  
   return pattern
     .replace("{piso}", floorNumber.toString())
+    .replace("{piso_inteligente}", smartFloorNumber)
     .replace("{piso_nombre}", floorName)
     .replace("{numero}", apartmentNumber.toString())
     .replace("{letra}", letra);
@@ -379,8 +387,8 @@ export function generatePatternExamples(pattern: string, floorsCount: number, ap
   const examples: string[] = [];
   const floorNames = ["Planta Baja", ...Array.from({ length: floorsCount - 1 }, (_, i) => `Piso ${i + 1}`)];
   
-  // Generar ejemplos de los primeros 3 pisos
-  for (let floorIdx = 0; floorIdx < Math.min(3, floorsCount); floorIdx++) {
+  // Generar ejemplos de TODOS los pisos
+  for (let floorIdx = 0; floorIdx < floorsCount; floorIdx++) {
     // Mostrar primeros 3 apartamentos de cada piso
     for (let aptNum = 1; aptNum <= Math.min(3, apartmentsPerFloor); aptNum++) {
       const example = generateApartmentName(

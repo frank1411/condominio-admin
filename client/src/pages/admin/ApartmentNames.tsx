@@ -8,12 +8,12 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 const PATTERN_EXAMPLES = [
+  { name: "Recomendado: PB-A, 1-A, 2-A", pattern: "{piso_inteligente}-{letra}", description: "PB-A, PB-B, 1-A, 1-B, 2-A, 2-B" },
   { name: "Letras por piso", pattern: "{piso_nombre}-{letra}", description: "PB-A, PB-B, Piso 1-A, Piso 1-B" },
   { name: "Número y letra", pattern: "{piso}-{letra}", description: "0-A, 0-B, 1-A, 1-B" },
   { name: "Apt con número y letra", pattern: "Apt-{piso}{letra}", description: "Apt-0A, Apt-0B, Apt-1A" },
   { name: "Unidad con letra", pattern: "U{piso}-{letra}", description: "U0-A, U0-B, U1-A, U1-B" },
   { name: "Solo letras", pattern: "{letra}", description: "A, B, C, D, E, F" },
-  { name: "Correlativo", pattern: "{numero}", description: "1, 2, 3, 4, 5, 6" },
 ];
 
 export default function AdminApartmentNames() {
@@ -123,7 +123,7 @@ export default function AdminApartmentNames() {
         <CardHeader>
           <CardTitle>Patrón de Nombres</CardTitle>
           <CardDescription>
-            Define un patrón para generar nombres automáticamente. Variables disponibles: {"{piso}"}, {"{piso_nombre}"}, {"{numero}"}, {"{letra}"}
+            Define un patrón para generar nombres automáticamente. Variables disponibles: {'{'} piso {'}'}, {'{'} piso_inteligente {'}'}, {'{'} piso_nombre {'}'}, {'{'} numero {'}'}, {'{'} letra {'}'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -161,10 +161,11 @@ export default function AdminApartmentNames() {
           <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
             <p className="text-sm font-medium mb-2">Variables Disponibles:</p>
             <ul className="text-sm text-gray-700 space-y-1">
-              <li>• <code className="bg-white px-2 py-1 rounded">{"{piso}"}</code> = Número del piso (0 = Planta Baja, 1, 2, 3...)</li>
-              <li>• <code className="bg-white px-2 py-1 rounded">{"{piso_nombre}"}</code> = Nombre del piso (Planta Baja, Piso 1, Piso 2...)</li>
-              <li>• <code className="bg-white px-2 py-1 rounded">{"{numero}"}</code> = Número correlativo (1, 2, 3, 4, 5, 6...)</li>
-              <li>• <code className="bg-white px-2 py-1 rounded">{"{letra}"}</code> = Letra (A, B, C, D, E, F...)</li>
+              <li>• <code className="bg-white px-2 py-1 rounded">{'{'} piso_inteligente {'}'}</code> = PB para piso 0, números para otros (PB, 1, 2, 3, 4) - <strong>RECOMENDADO</strong></li>
+              <li>• <code className="bg-white px-2 py-1 rounded">{'{'} piso {'}'}</code> = Número del piso (0 = Planta Baja, 1, 2, 3...)</li>
+              <li>• <code className="bg-white px-2 py-1 rounded">{'{'} piso_nombre {'}'}</code> = Nombre del piso (Planta Baja, Piso 1, Piso 2...)</li>
+              <li>• <code className="bg-white px-2 py-1 rounded">{'{'} numero {'}'}</code> = Número correlativo (1, 2, 3, 4, 5, 6...)</li>
+              <li>• <code className="bg-white px-2 py-1 rounded">{'{'} letra {'}'}</code> = Letra (A, B, C, D, E, F...)</li>
             </ul>
           </div>
 

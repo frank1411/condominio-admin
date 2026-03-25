@@ -97,3 +97,10 @@
 - [x] Mejorar página de Apartamentos con vista previa en tiempo real
 - [x] Agregar ejemplos de patrones (PB-A, 1-A, Apt-{piso}{letra}, etc.)
 - [x] Probar y validar todos los patrones posibles
+
+
+### Fase 6 - Correción de Bugs y Patrón Mejorado
+- [x] Investigar y corregir bug: generación solo en Planta Baja
+- [x] Crear función de patrón inteligente (PB para piso 0, números para otros)
+- [x] Actualizar patrón por defecto en base de datos
+- [x] Probar generación en todos los pisos (PB, 1, 2, 3, 4)
