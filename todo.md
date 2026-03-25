@@ -126,3 +126,11 @@
 - [x] Validar isActive en login
 - [x] Mejorar UI con botones de acción
 - [x] Probar todas las funcionalidades
+
+
+## Fase 9 - Limpieza de Datos y Cobros Individuales
+- [x] Limpiar base de datos: eliminar deudas y pagos de prueba
+- [x] Agregar campo apartmentId opcional a tabla de cobros
+- [x] Actualizar API de creación de cobros para soportar cobros individuales
+- [x] Mejorar UI del formulario de cobros con checkbox y selector
+- [x] Probar cobros individuales y globales

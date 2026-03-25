@@ -12,11 +12,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
 import { toast } from "sonner";
 
 export default function AdminCharges() {
   const { data: charges, isLoading, refetch } = trpc.charges.list.useQuery();
+  const { data: apartments } = trpc.apartments.list.useQuery();
   const createCharge = trpc.charges.create.useMutation();
   const deleteCharge = trpc.charges.delete.useMutation();
 
@@ -26,6 +28,8 @@ export default function AdminCharges() {
     amount: "",
     currency: "USD" as "USD" | "VES",
     isRecurring: true,
+    isIndividual: false,
+    apartmentId: undefined as number | undefined,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,6 +48,8 @@ export default function AdminCharges() {
         amount: "",
         currency: "USD",
         isRecurring: true,
+        isIndividual: false,
+        apartmentId: undefined,
       });
       refetch();
     } catch (error) {
@@ -138,6 +144,41 @@ export default function AdminCharges() {
               </div>
             </div>
 
+            <div className="border-t pt-4">
+              <label className="flex items-center gap-2 cursor-pointer mb-4">
+                <Checkbox
+                  checked={formData.isIndividual}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, isIndividual: checked as boolean, apartmentId: undefined })
+                  }
+                />
+                <span className="font-medium">Cobro individual (solo para un apartamento)</span>
+              </label>
+
+              {formData.isIndividual && (
+                <div>
+                  <Label>Seleccionar Apartamento</Label>
+                  <Select
+                    value={formData.apartmentId?.toString() || ""}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, apartmentId: parseInt(value) })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona un apartamento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {apartments?.map((apt) => (
+                        <SelectItem key={apt.id} value={apt.id.toString()}>
+                          {apt.unitName || `Apt. ${apt.apartmentNumber}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
             <div>
               <Label>Descripción</Label>
               <Textarea
@@ -170,7 +211,12 @@ export default function AdminCharges() {
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
                 >
                   <div className="flex-1">
-                    <p className="font-medium">{charge.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{charge.name}</p>
+                      {charge.apartmentId && (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Individual</span>
+                      )}
+                    </div>
                     {charge.description && (
                       <p className="text-sm text-gray-600">{charge.description}</p>
                     )}

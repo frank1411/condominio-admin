@@ -132,6 +132,7 @@ export const appRouter = router({
         amount: z.string(),
         currency: z.enum(["USD", "VES"]).default("USD"),
         isRecurring: z.boolean().default(true),
+        apartmentId: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
         const result = await db.createCharge({
@@ -141,6 +142,7 @@ export const appRouter = router({
           currency: input.currency,
           isRecurring: input.isRecurring,
           isActive: true,
+          apartmentId: input.apartmentId || null,
         });
         return { success: true };
       }),
@@ -153,6 +155,7 @@ export const appRouter = router({
         amount: z.string().optional(),
         currency: z.enum(["USD", "VES"]).optional(),
         isRecurring: z.boolean().optional(),
+        apartmentId: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
         const { id, ...data } = input;

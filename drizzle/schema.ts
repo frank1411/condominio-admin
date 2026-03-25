@@ -98,6 +98,7 @@ export const charges = mysqlTable("charges", {
   currency: mysqlEnum("currency", ["USD", "VES"]).default("USD"),
   isRecurring: boolean("isRecurring").default(true), // ¿Es mensual?
   isActive: boolean("isActive").default(true),
+  apartmentId: int("apartmentId"), // FK a apartments (null = aplica a todos)
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

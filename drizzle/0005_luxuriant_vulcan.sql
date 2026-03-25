@@ -1,0 +1,1 @@
+ALTER TABLE `charges` ADD `apartmentId` int;
