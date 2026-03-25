@@ -15,6 +15,13 @@
       "when": 1774397033343,
       "tag": "0001_boring_leper_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1774398440383,
+      "tag": "0002_black_wasp",
+      "breakpoints": true
     }
   ]
 }

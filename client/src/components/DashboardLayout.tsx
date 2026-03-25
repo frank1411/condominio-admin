@@ -21,15 +21,24 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, Settings, CreditCard, CheckCircle2 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
-const menuItems = [
-  { icon: LayoutDashboard, label: "Page 1", path: "/" },
-  { icon: Users, label: "Page 2", path: "/some-path" },
+const adminMenuItems = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: CheckCircle2, label: "Solicitudes", path: "/solicitudes" },
+  { icon: Users, label: "Usuarios", path: "/usuarios" },
+  { icon: FileText, label: "Cobros", path: "/cobros" },
+  { icon: CreditCard, label: "Pagos", path: "/pagos" },
+  { icon: Settings, label: "Configuración", path: "/configuracion" },
+];
+
+const userMenuItems = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: CreditCard, label: "Mis Pagos", path: "/pagos" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -112,8 +121,10 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
+
+  const menuItems = user?.role === "admin" ? adminMenuItems : userMenuItems;
+  const activeMenuItem = menuItems.find(item => item.path === location);
 
   useEffect(() => {
     if (isCollapsed) {
@@ -171,7 +182,7 @@ function DashboardLayoutContent({
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-semibold tracking-tight truncate">
-                    Navigation
+                    {user?.role === "admin" ? "Admin" : "Residente"}
                   </span>
                 </div>
               ) : null}

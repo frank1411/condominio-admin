@@ -339,6 +339,12 @@ export async function getUsersByRole(role: "admin" | "user") {
   return await db.select().from(users).where(eq(users.role, role));
 }
 
+export async function getPendingUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(users).where(eq(users.isApproved, false));
+}
+
 export async function updateUser(id: number, data: Partial<typeof users.$inferInsert>) {
   const db = await getDb();
   if (!db) return null;

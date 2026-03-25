@@ -15,6 +15,7 @@ import AdminUsers from "./pages/admin/Users";
 import AdminCharges from "./pages/admin/Charges";
 import AdminConfig from "./pages/admin/Config";
 import AdminPaymentReview from "./pages/admin/PaymentReview";
+import AdminUserRequests from "./pages/admin/UserRequests";
 
 function Router() {
   const { user, loading } = useAuth();
@@ -37,6 +38,7 @@ function Router() {
       <DashboardLayout>
         <Switch>
           <Route path={"/"} component={AdminDashboard} />
+          <Route path={"/solicitudes"} component={AdminUserRequests} />
           <Route path={"/usuarios"} component={AdminUsers} />
           <Route path={"/cobros"} component={AdminCharges} />
           <Route path={"/pagos"} component={AdminPaymentReview} />

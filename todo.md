@@ -63,3 +63,13 @@
 - [ ] Verificar cálculos de deudas
 - [x] Desplegar en servidor
 - [x] Verificar acceso desde internet
+
+
+## Mejoras Solicitadas - Fase 2
+- [x] Agregar campo de aprobación a tabla de usuarios
+- [x] Implementar API de aprobación/rechazo de usuarios
+- [x] Mejorar página de configuración con formulario editable
+- [x] Crear página de gestión de solicitudes de usuarios pendientes
+- [x] Crear usuario de prueba para Apartamento 1
+- [x] Implementar validación de usuario aprobado en login
+- [x] Actualizar menú lateral según rol del usuario

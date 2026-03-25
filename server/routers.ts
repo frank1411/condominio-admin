@@ -307,6 +307,54 @@ export const appRouter = router({
 
         return { success: true };
       }),
+
+    pending: adminProcedure.query(async () => {
+      return await db.getPendingUsers();
+    }),
+
+    approve: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateUser(input.userId, {
+          isApproved: true,
+          approvedBy: ctx.user.id,
+          approvedAt: new Date(),
+        });
+        
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: "approve_user",
+          entityType: "user",
+          entityId: input.userId,
+          details: "Usuario aprobado",
+        });
+
+        return { success: true };
+      }),
+
+    reject: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        reason: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateUser(input.userId, {
+          isApproved: false,
+          rejectionReason: input.reason,
+        });
+        
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: "reject_user",
+          entityType: "user",
+          entityId: input.userId,
+          details: `Usuario rechazado: ${input.reason}`,
+        });
+
+        return { success: true };
+      }),
   }),
 
   // ===== GESTIÓN DE RECORDATORIOS =====
