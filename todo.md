@@ -104,3 +104,13 @@
 - [x] Crear función de patrón inteligente (PB para piso 0, números para otros)
 - [x] Actualizar patrón por defecto en base de datos
 - [x] Probar generación en todos los pisos (PB, 1, 2, 3, 4)
+
+
+## Fase 7 - Corrección de Consistencia de Nomenclatura
+- [x] Verificar que generación de nombres persiste en BD
+- [x] Corregir lógica de cálculo de letra (extraer último dígito)
+- [x] Actualizar todos los nombres en la BD con patrón correcto
+- [x] Auditar dashboard para usar unitName consistentemente
+- [x] Auditar usuarios para usar unitName consistentemente
+- [x] Auditar pagos para usar unitName consistentemente
+- [x] Auditar apartamentos para usar unitName consistentemente

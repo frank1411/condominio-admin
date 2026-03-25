@@ -371,7 +371,9 @@ export function generateApartmentName(
   floorName: string,
   apartmentNumber: number
 ): string {
-  const letra = numberToLetter(apartmentNumber);
+  // Extraer solo el último dígito para la letra (1-6 en lugar de 101-106, 201-206, etc.)
+  const lastDigit = apartmentNumber % 10 || (apartmentNumber % 100 === 0 ? 10 : apartmentNumber % 100);
+  const letra = numberToLetter(lastDigit);
   const smartFloorNumber = getSmartFloorNumber(floorNumber);
   
   return pattern
