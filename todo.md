@@ -73,3 +73,11 @@
 - [x] Crear usuario de prueba para Apartamento 1
 - [x] Implementar validación de usuario aprobado en login
 - [x] Actualizar menú lateral según rol del usuario
+
+
+## Fase 3 - Validación de Flujo de Usuario
+- [x] Crear usuario sin aprobar para Apartamento 2 (María García)
+- [x] Verificar que aparezca en Solicitudes del admin
+- [x] Verificar dashboard del usuario (información del apartamento)
+- [x] Verificar módulo de carga de pagos del usuario
+- [x] Probar flujo completo: solicitud → aprobación → acceso
