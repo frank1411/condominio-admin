@@ -350,3 +350,56 @@ export async function updateUser(id: number, data: Partial<typeof users.$inferIn
   if (!db) return null;
   return await db.update(users).set(data).where(eq(users.id, id));
 }
+
+
+// ===== FUNCIONES PARA NOMBRES DE APARTAMENTOS =====
+
+export function generateApartmentName(
+  pattern: string,
+  floorNumber: number,
+  floorName: string,
+  apartmentNumber: number
+): string {
+  return pattern
+    .replace("{piso}", floorNumber.toString())
+    .replace("{piso_nombre}", floorName)
+    .replace("{numero}", apartmentNumber.toString());
+}
+
+export async function generateAllApartmentNames() {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    const config = await getCondominiumConfig();
+    if (!config) return null;
+
+    const pattern = config.apartmentNamePattern || "Apt-{piso}-{numero}";
+    const allFloors = await getAllFloors();
+    const allApartments = await getAllApartments();
+
+    for (const apartment of allApartments) {
+      const floor = allFloors.find(f => f.id === apartment.floorId);
+      if (floor) {
+        const newName = generateApartmentName(
+          pattern,
+          floor.floorNumber,
+          floor.floorName,
+          parseInt(apartment.apartmentNumber)
+        );
+        await db.update(apartments).set({ unitName: newName }).where(eq(apartments.id, apartment.id));
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error generating apartment names:", error);
+    return null;
+  }
+}
+
+export async function updateApartmentName(id: number, name: string) {
+  const db = await getDb();
+  if (!db) return null;
+  return await db.update(apartments).set({ unitName: name }).where(eq(apartments.id, id));
+}

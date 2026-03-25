@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, Settings, CreditCard, CheckCircle2 } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, Settings, CreditCard, CheckCircle2, Home } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -31,6 +31,7 @@ const adminMenuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: CheckCircle2, label: "Solicitudes", path: "/solicitudes" },
   { icon: Users, label: "Usuarios", path: "/usuarios" },
+  { icon: Home, label: "Apartamentos", path: "/apartamentos" },
   { icon: FileText, label: "Cobros", path: "/cobros" },
   { icon: CreditCard, label: "Pagos", path: "/pagos" },
   { icon: Settings, label: "Configuración", path: "/configuracion" },

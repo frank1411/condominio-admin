@@ -45,6 +45,7 @@ export const appRouter = router({
         defaultCurrency: z.enum(["USD", "VES"]).optional(),
         exchangeRate: z.string().optional(),
         reminderDay: z.number().min(1).max(28).optional(),
+        apartmentNamePattern: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         const result = await db.updateCondominiumConfig(input);
@@ -54,6 +55,11 @@ export const appRouter = router({
     initializeStructure: adminProcedure.mutation(async () => {
       await db.initializeFloorsAndApartments();
       return { success: true };
+    }),
+
+    generateApartmentNames: adminProcedure.mutation(async () => {
+      const result = await db.generateAllApartmentNames();
+      return result || { success: false };
     }),
   }),
 
@@ -83,6 +89,25 @@ export const appRouter = router({
       .input(z.object({ floorId: z.number() }))
       .query(async ({ input }) => {
         return await db.getApartmentsByFloor(input.floorId);
+      }),
+
+    updateName: adminProcedure
+      .input(z.object({
+        apartmentId: z.number(),
+        name: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateApartmentName(input.apartmentId, input.name);
+        
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: "update_apartment_name",
+          entityType: "apartment",
+          entityId: input.apartmentId,
+          details: `Nombre actualizado a: ${input.name}`,
+        });
+
+        return { success: true };
       }),
   }),
 

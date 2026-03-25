@@ -81,3 +81,11 @@
 - [x] Verificar dashboard del usuario (información del apartamento)
 - [x] Verificar módulo de carga de pagos del usuario
 - [x] Probar flujo completo: solicitud → aprobación → acceso
+
+
+## Fase 4 - Personalización de Apartamentos
+- [x] Agregar campo de patrón de nombres a configuración
+- [x] Crear API para generar nombres según patrón
+- [x] Crear página de administración de nombres de apartamentos
+- [x] Implementar edición manual de nombres individuales
+- [x] Integrar en configuración del condominio

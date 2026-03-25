@@ -48,6 +48,7 @@ export const condominiumConfig = mysqlTable("condominiumConfig", {
   defaultCurrency: mysqlEnum("defaultCurrency", ["USD", "VES"]).default("USD"),
   exchangeRate: decimal("exchangeRate", { precision: 10, scale: 4 }).default("1.0000"), // VES a USD
   reminderDay: int("reminderDay").default(5), // Día del mes para enviar recordatorios (1-28)
+  apartmentNamePattern: varchar("apartmentNamePattern", { length: 255 }).default("Apt-{piso}-{numero}"), // Patrón para nombres
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

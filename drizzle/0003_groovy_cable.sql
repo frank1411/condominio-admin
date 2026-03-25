@@ -1,0 +1,1 @@
+ALTER TABLE `condominiumConfig` ADD `apartmentNamePattern` varchar(255) DEFAULT 'Apt-{piso}-{numero}';
