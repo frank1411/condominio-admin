@@ -89,3 +89,11 @@
 - [x] Crear página de administración de nombres de apartamentos
 - [x] Implementar edición manual de nombres individuales
 - [x] Integrar en configuración del condominio
+
+
+## Fase 5 - Mejora de Patrones con Letras
+- [x] Agregar soporte para variable {letra} en generación de nombres
+- [x] Crear función para convertir números a letras (1→A, 2→B, etc.)
+- [x] Mejorar página de Apartamentos con vista previa en tiempo real
+- [x] Agregar ejemplos de patrones (PB-A, 1-A, Apt-{piso}{letra}, etc.)
+- [x] Probar y validar todos los patrones posibles

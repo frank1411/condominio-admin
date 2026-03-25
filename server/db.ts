@@ -354,16 +354,46 @@ export async function updateUser(id: number, data: Partial<typeof users.$inferIn
 
 // ===== FUNCIONES PARA NOMBRES DE APARTAMENTOS =====
 
+// Convertir número a letra (1→A, 2→B, 3→C, etc.)
+function numberToLetter(num: number): string {
+  if (num < 1 || num > 26) return num.toString();
+  return String.fromCharCode(64 + num); // 65 es 'A' en ASCII
+}
+
 export function generateApartmentName(
   pattern: string,
   floorNumber: number,
   floorName: string,
   apartmentNumber: number
 ): string {
+  const letra = numberToLetter(apartmentNumber);
   return pattern
     .replace("{piso}", floorNumber.toString())
     .replace("{piso_nombre}", floorName)
-    .replace("{numero}", apartmentNumber.toString());
+    .replace("{numero}", apartmentNumber.toString())
+    .replace("{letra}", letra);
+}
+
+// Función para generar ejemplos de patrón
+export function generatePatternExamples(pattern: string, floorsCount: number, apartmentsPerFloor: number): string[] {
+  const examples: string[] = [];
+  const floorNames = ["Planta Baja", ...Array.from({ length: floorsCount - 1 }, (_, i) => `Piso ${i + 1}`)];
+  
+  // Generar ejemplos de los primeros 3 pisos
+  for (let floorIdx = 0; floorIdx < Math.min(3, floorsCount); floorIdx++) {
+    // Mostrar primeros 3 apartamentos de cada piso
+    for (let aptNum = 1; aptNum <= Math.min(3, apartmentsPerFloor); aptNum++) {
+      const example = generateApartmentName(
+        pattern,
+        floorIdx,
+        floorNames[floorIdx],
+        aptNum
+      );
+      examples.push(example);
+    }
+  }
+  
+  return examples;
 }
 
 export async function generateAllApartmentNames() {

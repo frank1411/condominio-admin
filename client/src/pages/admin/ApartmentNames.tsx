@@ -3,9 +3,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, RefreshCw, Edit2 } from "lucide-react";
-import { useState } from "react";
+import { Loader2, RefreshCw, Edit2, Lightbulb } from "lucide-react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
+
+const PATTERN_EXAMPLES = [
+  { name: "Letras por piso", pattern: "{piso_nombre}-{letra}", description: "PB-A, PB-B, Piso 1-A, Piso 1-B" },
+  { name: "Número y letra", pattern: "{piso}-{letra}", description: "0-A, 0-B, 1-A, 1-B" },
+  { name: "Apt con número y letra", pattern: "Apt-{piso}{letra}", description: "Apt-0A, Apt-0B, Apt-1A" },
+  { name: "Unidad con letra", pattern: "U{piso}-{letra}", description: "U0-A, U0-B, U1-A, U1-B" },
+  { name: "Solo letras", pattern: "{letra}", description: "A, B, C, D, E, F" },
+  { name: "Correlativo", pattern: "{numero}", description: "1, 2, 3, 4, 5, 6" },
+];
 
 export default function AdminApartmentNames() {
   const { data: apartments, isLoading, refetch } = trpc.apartments.list.useQuery();
@@ -13,10 +22,20 @@ export default function AdminApartmentNames() {
   const generateNames = trpc.config.generateApartmentNames.useMutation();
   const updateName = trpc.apartments.updateName.useMutation();
   const updateConfig = trpc.config.update.useMutation();
+  const getExamples = trpc.config.getPatternExamples.useQuery(
+    { pattern: config?.apartmentNamePattern || "Apt-{piso}-{numero}" },
+    { enabled: !!config }
+  );
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("");
   const [patternInput, setPatternInput] = useState(config?.apartmentNamePattern || "Apt-{piso}-{numero}");
+
+  useEffect(() => {
+    if (config?.apartmentNamePattern) {
+      setPatternInput(config.apartmentNamePattern);
+    }
+  }, [config]);
 
   const handleGenerateNames = async () => {
     try {
@@ -53,6 +72,10 @@ export default function AdminApartmentNames() {
     }
   };
 
+  const applyQuickPattern = (pattern: string) => {
+    setPatternInput(pattern);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -65,15 +88,42 @@ export default function AdminApartmentNames() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Nombres de Apartamentos</h1>
-        <p className="text-gray-600 mt-2">Personaliza los nombres de los apartamentos</p>
+        <p className="text-gray-600 mt-2">Personaliza los nombres de los apartamentos con patrones flexibles</p>
       </div>
+
+      {/* Patrones Rápidos */}
+      <Card className="bg-blue-50 border-blue-200">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lightbulb className="w-5 h-5 text-blue-600" />
+            Patrones Rápidos
+          </CardTitle>
+          <CardDescription>Haz clic en cualquier patrón para usarlo</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            {PATTERN_EXAMPLES.map((example) => (
+              <Button
+                key={example.pattern}
+                variant="outline"
+                className="justify-start h-auto flex-col items-start p-3 hover:bg-blue-100"
+                onClick={() => applyQuickPattern(example.pattern)}
+              >
+                <p className="font-medium text-sm">{example.name}</p>
+                <p className="text-xs text-gray-600">{example.description}</p>
+                <code className="text-xs bg-white px-2 py-1 rounded mt-1">{example.pattern}</code>
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Configuración de Patrón */}
       <Card>
         <CardHeader>
           <CardTitle>Patrón de Nombres</CardTitle>
           <CardDescription>
-            Define un patrón para generar nombres automáticamente. Variables disponibles: {"{piso}"}, {"{piso_nombre}"}, {"{numero}"}
+            Define un patrón para generar nombres automáticamente. Variables disponibles: {"{piso}"}, {"{piso_nombre}"}, {"{numero}"}, {"{letra}"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -83,7 +133,7 @@ export default function AdminApartmentNames() {
               <Input
                 value={patternInput}
                 onChange={(e) => setPatternInput(e.target.value)}
-                placeholder="Ej: Apt-{piso}-{numero}"
+                placeholder="Ej: {piso_nombre}-{letra}"
               />
               <Button onClick={handleUpdatePattern} className="bg-blue-600 hover:bg-blue-700">
                 Guardar Patrón
@@ -91,12 +141,30 @@ export default function AdminApartmentNames() {
             </div>
           </div>
 
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium mb-2">Ejemplos de variables:</p>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• <code className="bg-white px-2 py-1 rounded">{"{piso}"}</code> = Número del piso (0 = Planta Baja)</li>
-              <li>• <code className="bg-white px-2 py-1 rounded">{"{piso_nombre}"}</code> = Nombre del piso (Planta Baja, Piso 1, etc.)</li>
-              <li>• <code className="bg-white px-2 py-1 rounded">{"{numero}"}</code> = Número correlativo del apartamento</li>
+          {/* Vista Previa del Patrón */}
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <p className="text-sm font-medium mb-3">Vista Previa del Patrón:</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+              {getExamples.data && getExamples.data.length > 0 ? (
+                getExamples.data.map((example, idx) => (
+                  <div key={idx} className="bg-white border rounded p-2 text-center text-sm font-medium">
+                    {example}
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-600 col-span-full">Ingresa un patrón válido</p>
+              )}
+            </div>
+          </div>
+
+          {/* Información de Variables */}
+          <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+            <p className="text-sm font-medium mb-2">Variables Disponibles:</p>
+            <ul className="text-sm text-gray-700 space-y-1">
+              <li>• <code className="bg-white px-2 py-1 rounded">{"{piso}"}</code> = Número del piso (0 = Planta Baja, 1, 2, 3...)</li>
+              <li>• <code className="bg-white px-2 py-1 rounded">{"{piso_nombre}"}</code> = Nombre del piso (Planta Baja, Piso 1, Piso 2...)</li>
+              <li>• <code className="bg-white px-2 py-1 rounded">{"{numero}"}</code> = Número correlativo (1, 2, 3, 4, 5, 6...)</li>
+              <li>• <code className="bg-white px-2 py-1 rounded">{"{letra}"}</code> = Letra (A, B, C, D, E, F...)</li>
             </ul>
           </div>
 

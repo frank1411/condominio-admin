@@ -61,6 +61,14 @@ export const appRouter = router({
       const result = await db.generateAllApartmentNames();
       return result || { success: false };
     }),
+
+    getPatternExamples: adminProcedure
+      .input(z.object({ pattern: z.string() }))
+      .query(async ({ input }) => {
+        const config = await db.getCondominiumConfig();
+        if (!config) return [];
+        return db.generatePatternExamples(input.pattern, config.floors || 5, config.apartmentsPerFloor || 6);
+      }),
   }),
 
   // ===== GESTIÓN DE PISOS Y APARTAMENTOS =====
