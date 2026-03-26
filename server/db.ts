@@ -662,3 +662,80 @@ export async function generateDebtsFromCharge(chargeId: number) {
     console.error(`[Debt Generation] Error generating debts for charge ${chargeId}:`, error);
   }
 }
+
+
+export async function getPaymentById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const { eq: drizzleEq } = await import('drizzle-orm');
+  const result = await db
+    .select()
+    .from(payments)
+    .where(drizzleEq(payments.id, id));
+  
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function applyPaymentToDebts(apartmentId: number, paymentAmount: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const { eq: drizzleEq, and } = await import('drizzle-orm');
+  
+  try {
+    // Buscar deudas pendientes del apartamento (ordenadas por mes más antiguo primero)
+    const pendingDebts = await db
+      .select()
+      .from(monthlyDebts)
+      .where(and(
+        drizzleEq(monthlyDebts.apartmentId, apartmentId),
+        drizzleEq(monthlyDebts.isPaid, false)
+      ))
+      .orderBy(monthlyDebts.month);
+    
+    let remainingPayment = paymentAmount;
+    let appliedTotal = 0;
+    
+    for (const debt of pendingDebts) {
+      if (remainingPayment <= 0) break;
+      
+      const debtAmount = parseFloat(debt.pendingAmount as unknown as string);
+      const currentPaid = parseFloat(debt.totalPaid as unknown as string) || 0;
+      
+      if (remainingPayment >= debtAmount) {
+        // El pago cubre completamente esta deuda
+        remainingPayment -= debtAmount;
+        appliedTotal += debtAmount;
+        
+        await db.update(monthlyDebts)
+          .set({
+            pendingAmount: "0.00",
+            totalPaid: debt.totalDue,
+            isPaid: true,
+          })
+          .where(drizzleEq(monthlyDebts.id, debt.id));
+      } else if (remainingPayment > 0) {
+        // El pago es parcial
+        const newPending = (debtAmount - remainingPayment).toFixed(2);
+        const newPaid = (currentPaid + remainingPayment).toFixed(2);
+        
+        appliedTotal += remainingPayment;
+        
+        await db.update(monthlyDebts)
+          .set({
+            pendingAmount: newPending,
+            totalPaid: newPaid,
+          })
+          .where(drizzleEq(monthlyDebts.id, debt.id));
+        
+        remainingPayment = 0;
+      }
+    }
+    
+    return { success: true, appliedAmount: appliedTotal };
+  } catch (error) {
+    console.error("[Payment Liquidation] Error applying payment to debts:", error);
+    return { success: false, appliedAmount: 0 };
+  }
+}

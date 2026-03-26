@@ -173,3 +173,10 @@
 - [x] Simplificar UI para mostrar solo totalDue
 - [x] Probar que cobros de $5 generan deudas de $5
 - [x] Limpiar base de datos de deudas antiguas
+
+
+## Fase 15 - Liquidación de Pagos
+- [ ] Crear función de liquidación de pagos en backend
+- [ ] Actualizar API de aprobación de pagos para aplicar liquidación
+- [ ] Probar que deudas se reducen al aprobar pagos
+- [ ] Verificar que dashboard refleja cambios correctamente
