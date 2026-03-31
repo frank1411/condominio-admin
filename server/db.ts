@@ -276,28 +276,39 @@ export async function getPaymentsByApartment(apartmentId: number, month?: string
   return await query;
 }
 
-export async function getPendingPayments() {
+export async function getPendingPayments(limit: number = 20, offset: number = 0) {
   const db = await getDb();
-  if (!db) return [];
-  const { eq: drizzleEq } = await import('drizzle-orm');
-  return await db
-    .select({
-      id: payments.id,
-      userId: payments.userId,
-      apartmentId: payments.apartmentId,
-      unitName: apartments.unitName,
-      month: payments.month,
-      voucherNumber: payments.voucherNumber,
-      voucherImage: payments.voucherImage,
-      amount: payments.amount,
-      currency: payments.currency,
-      status: payments.status,
-      createdAt: payments.createdAt,
-      updatedAt: payments.updatedAt,
-    })
-    .from(payments)
-    .innerJoin(apartments, drizzleEq(payments.apartmentId, apartments.id))
-    .where(drizzleEq(payments.status, "pending"));
+  if (!db) return { data: [], total: 0 };
+  const { eq: drizzleEq, desc } = await import('drizzle-orm');
+  
+  try {
+    const data = await db
+      .select({
+        id: payments.id,
+        userId: payments.userId,
+        apartmentId: payments.apartmentId,
+        unitName: apartments.unitName,
+        month: payments.month,
+        voucherNumber: payments.voucherNumber,
+        voucherImage: payments.voucherImage,
+        amount: payments.amount,
+        currency: payments.currency,
+        status: payments.status,
+        createdAt: payments.createdAt,
+        updatedAt: payments.updatedAt,
+      })
+      .from(payments)
+      .innerJoin(apartments, drizzleEq(payments.apartmentId, apartments.id))
+      .where(drizzleEq(payments.status, "pending"))
+      .orderBy(desc(payments.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    return { data, total: data.length };
+  } catch (error) {
+    console.error("[Payments] Error fetching pending payments:", error);
+    return { data: [], total: 0 };
+  }
 }
 
 export async function updatePaymentStatus(id: number, status: "approved" | "rejected", reviewedBy: number, notes?: string) {

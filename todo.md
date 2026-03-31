@@ -290,3 +290,21 @@
 - [ ] Verificar responsive design en móvil
 - [ ] Crear checkpoint final
 - [ ] Desplegar a producción
+
+
+## PLAN UNIFICADO - FASE 7: Paginación y Performance
+
+- [x] Implementar paginación en getPendingPayments() con limit/offset
+- [x] Actualizar PaymentReview.tsx para usar estructura paginada
+- [x] Compilación sin errores
+- [x] Servidor ejecutándose correctamente
+- [ ] Implementar paginación en getPaymentsByApartment()
+- [ ] Implementar paginación en getMonthlyDebtsSummary()
+- [ ] Implementar paginación en getUserNotifications()
+- [ ] Agregar índices en base de datos para queries frecuentes
+- [ ] Optimizar queries con select() selectivo
+- [ ] Implementar lazy loading de imágenes
+- [ ] Agregar caché en frontend con React Query
+- [ ] Crear pruebas de performance
+- [ ] Verificar Core Web Vitals
+- [ ] Crear checkpoint de Fase 7

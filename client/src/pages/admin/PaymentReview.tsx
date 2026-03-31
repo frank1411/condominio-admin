@@ -61,11 +61,11 @@ export default function AdminPaymentReview() {
   };
 
   const tableData: PaymentRow[] = useMemo(() => {
-    return (payments || []).map((p) => ({
+    return (payments?.data || []).map((p: PaymentRow) => ({
       ...p,
       createdAt: new Date(p.createdAt),
     }));
-  }, [payments]);
+  }, [payments?.data]);
 
   const columns: Column<PaymentRow>[] = [
     {
@@ -126,7 +126,7 @@ export default function AdminPaymentReview() {
     );
   }
 
-  const selectedPaymentData = payments?.find((p) => p.id === selectedPayment);
+  const selectedPaymentData = payments?.data?.find((p: PaymentRow) => p.id === selectedPayment);
 
   return (
     <div className="space-y-6">
@@ -134,8 +134,8 @@ export default function AdminPaymentReview() {
         <div>
           <h1 className="text-3xl font-bold">Revisión de Pagos</h1>
           <p className="text-gray-600 mt-2">
-            {payments?.length || 0} pago{(payments?.length || 0) !== 1 ? "s" : ""} pendiente
-            {(payments?.length || 0) !== 1 ? "s" : ""} de revisión
+            {payments?.data?.length || 0} pago{(payments?.data?.length || 0) !== 1 ? "s" : ""} pendiente
+            {(payments?.data?.length || 0) !== 1 ? "s" : ""} de revisión
           </p>
         </div>
         <div className="flex gap-2">
@@ -156,7 +156,7 @@ export default function AdminPaymentReview() {
         </div>
       </div>
 
-      {payments && payments.length > 0 ? (
+      {payments && payments.data && payments.data.length > 0 ? (
         <div className="space-y-6">
           {/* Vista de Tabla */}
           {viewMode === "table" && (
@@ -172,7 +172,7 @@ export default function AdminPaymentReview() {
           {/* Vista de Tarjetas */}
           {viewMode === "cards" && (
             <div className="space-y-4">
-              {payments.map((payment) => (
+              {payments.data.map((payment: PaymentRow) => (
                 <Card
                   key={payment.id}
                   className={selectedPayment === payment.id ? "border-blue-500 border-2" : ""}
