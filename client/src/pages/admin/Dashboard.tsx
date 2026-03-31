@@ -2,15 +2,74 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle2, DollarSign, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, CheckCircle2, DollarSign, Users, Download } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { ManualPaymentModal } from "@/components/ManualPaymentModal";
 
 export default function AdminDashboard() {
   const [paymentModal, setPaymentModal] = useState<{ open: boolean; apartmentId?: number; apartmentName?: string; pendingDebt?: number }>({ open: false });
   const [sortBy, setSortBy] = useState<'floor' | 'debtDesc' | 'debtAsc'>('floor');
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
   const { data: dashboard, isLoading, refetch } = trpc.debts.dashboard.useQuery();
   const { data: config } = trpc.config.get.useQuery();
+  const downloadPDF = trpc.reports.downloadPDF.useQuery({ month: dashboard?.currentMonth }, { enabled: false });
+  const downloadExcel = trpc.reports.downloadExcel.useQuery({ month: dashboard?.currentMonth }, { enabled: false });
+
+  const handleDownloadPDF = async () => {
+    setDownloadingPDF(true);
+    try {
+      const result = await downloadPDF.refetch();
+      if (result.data) {
+        const binary = atob(result.data.buffer);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = result.data.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Error descargando PDF:', error);
+    } finally {
+      setDownloadingPDF(false);
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    setDownloadingExcel(true);
+    try {
+      const result = await downloadExcel.refetch();
+      if (result.data) {
+        const binary = atob(result.data.buffer);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = result.data.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Error descargando Excel:', error);
+    } finally {
+      setDownloadingExcel(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -85,7 +144,7 @@ export default function AdminDashboard() {
             <CardTitle>Estado de Pagos por Apartamento</CardTitle>
             <CardDescription>Mes: {dashboard.currentMonth} - Haz click en un apartamento para registrar pago manual</CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'floor' | 'debtDesc' | 'debtAsc')}
@@ -95,6 +154,26 @@ export default function AdminDashboard() {
               <option value="debtDesc">Deuda Mayor a Menor</option>
               <option value="debtAsc">Deuda Menor a Mayor</option>
             </select>
+            <Button
+              onClick={handleDownloadPDF}
+              disabled={downloadingPDF}
+              size="sm"
+              variant="outline"
+              className="gap-2"
+            >
+              <Download className="w-4 h-4" />
+              {downloadingPDF ? 'PDF...' : 'PDF'}
+            </Button>
+            <Button
+              onClick={handleDownloadExcel}
+              disabled={downloadingExcel}
+              size="sm"
+              variant="outline"
+              className="gap-2"
+            >
+              <Download className="w-4 h-4" />
+              {downloadingExcel ? 'Excel...' : 'Excel'}
+            </Button>
           </div>
         </CardHeader>
         <CardContent>

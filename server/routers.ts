@@ -5,6 +5,7 @@ import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import * as db from "./db";
+import { generatePDF, generateExcel } from "./exports";
 
 // Procedimiento solo para administradores
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -767,6 +768,115 @@ export const appRouter = router({
         }
 
         return reportJSON;
+      }),
+
+    paymentStatusExport: adminProcedure
+      .input(z.object({
+        month: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        const month = input.month || new Date().toISOString().slice(0, 7);
+        const sortBy = 'floor';
+        
+        const debts = await db.getAllApartmentsWithDebtStatus(month, sortBy);
+        const totalApartments = debts.length;
+        const apartmentsWithDebt = debts.filter(d => !d.isPaid);
+        const apartmentsWithoutDebt = totalApartments - apartmentsWithDebt.length;
+        const totalPending = apartmentsWithDebt.reduce((sum, d) => sum + parseFloat(d.pendingAmount), 0);
+        const totalDue = debts.reduce((sum, d) => sum + parseFloat(d.totalDue), 0);
+        
+        const config = await db.getCondominiumConfig();
+        
+        return {
+          month,
+          condominiumName: config?.name || "Condominio",
+          debts,
+          summary: {
+            total: totalApartments,
+            paid: apartmentsWithoutDebt,
+            pending: apartmentsWithDebt.length,
+            totalDue,
+            totalPending,
+          },
+        };
+      }),
+
+    downloadPDF: adminProcedure
+      .input(z.object({
+        month: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        const month = input.month || new Date().toISOString().slice(0, 7);
+        const sortBy = 'floor';
+        
+        const debts = await db.getAllApartmentsWithDebtStatus(month, sortBy);
+        const totalApartments = debts.length;
+        const apartmentsWithDebt = debts.filter(d => !d.isPaid);
+        const apartmentsWithoutDebt = totalApartments - apartmentsWithDebt.length;
+        const totalPending = apartmentsWithDebt.reduce((sum, d) => sum + parseFloat(d.pendingAmount), 0);
+        const totalDue = debts.reduce((sum, d) => sum + parseFloat(d.totalDue), 0);
+        
+        const config = await db.getCondominiumConfig();
+        
+        const pdfBuffer = await generatePDF({
+          month,
+          condominiumName: config?.name || "Condominio",
+          debts: debts.map(d => ({
+            apartmentId: d.apartmentId,
+            apartmentName: d.unitName || d.apartmentNumber,
+            totalDue: d.totalDue,
+            pendingAmount: d.pendingAmount,
+            isPaid: d.isPaid,
+          })),
+          summary: {
+            total: totalApartments,
+            paid: apartmentsWithoutDebt,
+            pending: apartmentsWithDebt.length,
+            totalDue,
+            totalPending,
+          },
+        });
+        
+        return { buffer: pdfBuffer.toString('base64'), filename: `Estado-Pagos-${month}.pdf` };
+      }),
+
+    downloadExcel: adminProcedure
+      .input(z.object({
+        month: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        const month = input.month || new Date().toISOString().slice(0, 7);
+        const sortBy = 'floor';
+        
+        const debts = await db.getAllApartmentsWithDebtStatus(month, sortBy);
+        const totalApartments = debts.length;
+        const apartmentsWithDebt = debts.filter(d => !d.isPaid);
+        const apartmentsWithoutDebt = totalApartments - apartmentsWithDebt.length;
+        const totalPending = apartmentsWithDebt.reduce((sum, d) => sum + parseFloat(d.pendingAmount), 0);
+        const totalDue = debts.reduce((sum, d) => sum + parseFloat(d.totalDue), 0);
+        
+        const config = await db.getCondominiumConfig();
+        
+        const excelBuffer = await generateExcel({
+          month,
+          condominiumName: config?.name || "Condominio",
+          debts: debts.map(d => ({
+            apartmentId: d.apartmentId,
+            apartmentName: d.unitName || d.apartmentNumber,
+            totalDue: d.totalDue,
+            pendingAmount: d.pendingAmount,
+            isPaid: d.isPaid,
+          })),
+          summary: {
+            total: totalApartments,
+            paid: apartmentsWithoutDebt,
+            pending: apartmentsWithDebt.length,
+            totalDue,
+            totalPending,
+          },
+        });
+        
+        return { buffer: excelBuffer.toString('base64'), filename: `Estado-Pagos-${month}.xlsx` };
       }),
   }),
 });
