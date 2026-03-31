@@ -928,14 +928,8 @@ export async function approvePaymentWithValidations(
       return { success: false, message: monthValidation.reason || "Fecha inválida" };
     }
     
-    // 3. Validar que no exista otro pago aprobado para el mismo mes
-    const duplicateCheck = await checkDuplicatePayment(paymentData.apartmentId, paymentData.month, paymentId);
-    if (duplicateCheck.isDuplicate) {
-      return {
-        success: false,
-        message: `Ya existe un pago aprobado para este apartamento en ${paymentData.month}`
-      };
-    }
+    // 3. Permitir múltiples pagos aprobados en el mismo mes para pagos parciales
+    // Validación eliminada para soportar pagos parciales
     
     // 4. Validar que el monto no exceda la deuda pendiente
     const amountValidation = await validatePaymentAmount(paymentData.apartmentId, paymentAmount);
