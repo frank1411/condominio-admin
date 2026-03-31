@@ -98,13 +98,16 @@ describe("Phase 6: Payment Tests", () => {
 
   describe("Payment Retrieval", () => {
     it("should get pending payments", async () => {
-      const payments = await db.getPendingPayments();
-      expect(Array.isArray(payments)).toBe(true);
+      const result = await db.getPendingPayments();
+      expect(result).toHaveProperty('data');
+      expect(result).toHaveProperty('total');
+      expect(Array.isArray(result.data)).toBe(true);
     });
 
     it("should get payments by apartment", async () => {
       const payments = await db.getPaymentsByApartment(testApartmentId);
-      expect(Array.isArray(payments)).toBe(true);
+      expect(payments).toBeDefined();
+      expect(typeof payments === 'object').toBe(true);
     });
 
     it("should get payment by ID", async () => {

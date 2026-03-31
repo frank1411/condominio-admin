@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, CheckCircle2, DollarSign, Users } from "lucide-react";
 import { Loader2 } from "lucide-react";
+import { ManualPaymentModal } from "@/components/ManualPaymentModal";
 
 export default function AdminDashboard() {
-  const { data: dashboard, isLoading } = trpc.debts.dashboard.useQuery();
+  const [paymentModal, setPaymentModal] = useState<{ open: boolean; apartmentId?: number; apartmentName?: string; pendingDebt?: number }>({ open: false });
+  const { data: dashboard, isLoading, refetch } = trpc.debts.dashboard.useQuery();
   const { data: config } = trpc.config.get.useQuery();
 
   if (isLoading) {
@@ -78,14 +81,20 @@ export default function AdminDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Estado de Pagos por Apartamento</CardTitle>
-          <CardDescription>Mes: {dashboard.currentMonth}</CardDescription>
+          <CardDescription>Mes: {dashboard.currentMonth} - Haz click en un apartamento para registrar pago manual</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {dashboard.debts.map((debt) => (
               <div
                 key={debt.id}
-                className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => setPaymentModal({
+                  open: true,
+                  apartmentId: debt.apartmentId,
+                  apartmentName: debt.unitName || `Apartamento ${debt.apartmentId}`,
+                  pendingDebt: parseFloat(debt.pendingAmount),
+                })}
               >
                 <div className="flex-1">
                   <p className="font-medium">{debt.unitName || `Apartamento ${debt.apartmentId}`}</p>
@@ -145,6 +154,18 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Modal de Pago Manual */}
+      {paymentModal.apartmentId && (
+        <ManualPaymentModal
+          open={paymentModal.open}
+          onOpenChange={(open) => setPaymentModal({ ...paymentModal, open })}
+          apartmentId={paymentModal.apartmentId}
+          apartmentName={paymentModal.apartmentName || ""}
+          pendingDebt={paymentModal.pendingDebt || 0}
+          onPaymentRecorded={() => refetch()}
+        />
       )}
     </div>
   );

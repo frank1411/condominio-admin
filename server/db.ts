@@ -865,17 +865,23 @@ export function validatePaymentMonth(paymentMonth: string): { valid: boolean; re
       };
     }
     
-    const paymentDate = new Date(yearNum, monthNum - 1);
+    // Validar que el año sea razonable (no demasiado antiguo ni futuro)
     const today = new Date();
-    const currentMonth = new Date(today.getFullYear(), today.getMonth());
-    
-    if (paymentDate > currentMonth) {
+    if (yearNum < today.getFullYear() - 10) {
       return {
         valid: false,
-        reason: `No se pueden cargar pagos para meses futuros. Mes del pago: ${paymentMonth}`
+        reason: "Mes muy antiguo. Debe estar dentro de los últimos 10 años"
       };
     }
     
+    if (yearNum > today.getFullYear() + 1) {
+      return {
+        valid: false,
+        reason: "Año inválido. No se pueden cargar pagos demasiado en el futuro"
+      };
+    }
+    
+    // Permitir pagos parciales del mismo mes y meses anteriores
     return { valid: true };
   } catch (error) {
     return {

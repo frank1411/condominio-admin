@@ -365,6 +365,43 @@ export const appRouter = router({
         const url = await db.getPaymentVoucherUrl(input.paymentId);
         return { url };
       }),
+
+    recordManualPayment: adminProcedure
+      .input(z.object({
+        apartmentId: z.number(),
+        amount: z.number().positive(),
+        month: z.string(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Crear pago manual
+        const result = await db.createPayment({
+          apartmentId: input.apartmentId,
+          userId: ctx.user.id,
+          amount: input.amount.toString(),
+          month: input.month,
+          currency: "USD",
+          status: "approved",
+          voucherNumber: `MANUAL-${Date.now()}`,
+        });
+
+        if (!result) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error al crear pago" });
+        }
+
+        // Aplicar liquidacion automatica
+        await db.applyPaymentToDebts(input.apartmentId, input.amount);
+
+        // Crear log de auditoria
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: "record_manual_payment",
+          entityType: "payment",
+          details: `Pago manual de $${input.amount} registrado para apartamento ${input.apartmentId}. ${input.notes || ''}`,
+        });
+
+        return { success: true };
+      }),
   }),
 
   // ===== GESTIÓN DE DEUDAS =====

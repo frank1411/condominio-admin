@@ -343,3 +343,30 @@
 - [ ] Documentar variables de entorno
 - [ ] Crear guía de seguridad
 - [ ] Crear checkpoint de Fase 9
+
+
+## PLAN UNIFICADO - FASE 10: Despliegue y Monitoreo
+
+- [ ] Verificar que todas las pruebas pasen
+- [ ] Ejecutar build de producción
+- [ ] Verificar que no haya errores de TypeScript
+- [ ] Desplegar a producción en Manus
+- [ ] Verificar que la app cargue correctamente
+- [ ] Probar funcionalidades principales en producción
+- [ ] Configurar monitoreo y alertas
+- [ ] Verificar Core Web Vitals
+- [ ] Crear plan de soporte y escalación
+- [ ] Documentar Go-Live
+- [ ] Crear checkpoint final
+
+
+## NUEVAS FUNCIONALIDADES - Registro Manual de Pagos
+
+- [ ] Eliminar validación de fecha restrictiva en validatePaymentMonth()
+- [ ] Crear API payments.recordManualPayment en routers.ts
+- [ ] Crear componente ManualPaymentModal.tsx
+- [ ] Integrar modal en Dashboard.tsx al hacer click en apartamento
+- [ ] Verificar que liquidación automática funciona con pagos parciales
+- [ ] Probar múltiples pagos parciales en el mismo mes
+- [ ] Testing de la nueva funcionalidad
+- [ ] Crear checkpoint
