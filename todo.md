@@ -209,3 +209,20 @@
 - [x] Pruebas unitarias pasando
 - [x] Verificar funcionamiento en navegador
 - [ ] Crear checkpoint de Fase 2
+
+
+## PLAN UNIFICADO - FASE 3: Notificaciones
+
+- [x] Crear tabla de notificaciones en schema.ts
+- [x] Generar migración SQL con drizzle-kit
+- [x] Ejecutar migración en base de datos
+- [x] Crear funciones de notificaciones en db.ts
+- [x] Crear API de notificaciones en routers.ts (list, unread, unreadCount, markAsRead, markAllAsRead)
+- [x] Integrar notificación al aprobar pago
+- [x] Integrar notificación al rechazar pago
+- [x] Crear componente NotificationCenter en frontend
+- [x] Agregar badge de notificaciones sin leer
+- [x] Compilación sin errores
+- [x] Pruebas unitarias pasando
+- [ ] Crear página de historial de notificaciones
+- [ ] Crear checkpoint de Fase 3

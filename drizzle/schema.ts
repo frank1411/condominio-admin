@@ -187,3 +187,33 @@ export const auditLog = mysqlTable("auditLog", {
 
 export type AuditLog = typeof auditLog.$inferSelect;
 export type InsertAuditLog = typeof auditLog.$inferInsert;
+
+
+/**
+ * TABLA: notifications
+ * Notificaciones para usuarios (in-app)
+ */
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(), // FK a users (destinatario)
+  type: mysqlEnum("type", [
+    "payment_approved",
+    "payment_rejected",
+    "payment_received",
+    "debt_created",
+    "debt_paid",
+    "reminder",
+    "system"
+  ]).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  relatedEntityType: varchar("relatedEntityType", { length: 100 }), // "payment", "debt", etc.
+  relatedEntityId: int("relatedEntityId"),
+  isRead: boolean("isRead").default(false),
+  actionUrl: varchar("actionUrl", { length: 512 }), // URL para la acción
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  readAt: timestamp("readAt"),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;

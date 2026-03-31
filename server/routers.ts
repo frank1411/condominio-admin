@@ -228,6 +228,12 @@ export const appRouter = router({
         notes: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        // Obtener detalles del pago
+        const payment = await db.getPaymentById(input.id);
+        if (!payment) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Pago no encontrado" });
+        }
+
         // Usar función mejorada con validaciones ACID
         const result = await db.approvePaymentWithValidations(
           input.id,
@@ -242,6 +248,14 @@ export const appRouter = router({
           });
         }
 
+        // Notificar al usuario que su pago fue aprobado
+        await db.notifyPaymentApproved(
+          payment.userId,
+          input.id,
+          payment.amount,
+          payment.currency || "USD"
+        );
+
         return {
           success: true,
           message: result.message,
@@ -255,7 +269,18 @@ export const appRouter = router({
         notes: z.string(),
       }))
       .mutation(async ({ input, ctx }) => {
+        const payment = await db.getPaymentById(input.id);
+        if (!payment) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Pago no encontrado" });
+        }
+
         await db.updatePaymentStatus(input.id, "rejected", ctx.user.id, input.notes);
+        
+        await db.notifyPaymentRejected(
+          payment.userId,
+          input.id,
+          input.notes
+        );
         
         await db.createAuditLog({
           userId: ctx.user.id,
@@ -523,6 +548,44 @@ export const appRouter = router({
 
         return { success: true };
       }),
+  }),
+
+  // ===== NOTIFICACIONES =====
+  notifications: router({
+    list: protectedProcedure
+      .input(z.object({
+        limit: z.number().min(1).max(100).default(50),
+      }))
+      .query(async ({ input, ctx }) => {
+        return await db.getUserNotifications(ctx.user.id, input.limit);
+      }),
+
+    unread: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUnreadNotifications(ctx.user.id);
+    }),
+
+    unreadCount: protectedProcedure.query(async ({ ctx }) => {
+      return await db.countUnreadNotifications(ctx.user.id);
+    }),
+
+    markAsRead: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const notification = await db.getUserNotifications(ctx.user.id, 1000);
+        const exists = notification.some(n => n.id === input.id);
+        
+        if (!exists) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Notificación no encontrada" });
+        }
+
+        await db.markNotificationAsRead(input.id);
+        return { success: true };
+      }),
+
+    markAllAsRead: protectedProcedure.mutation(async ({ ctx }) => {
+      await db.markAllNotificationsAsRead(ctx.user.id);
+      return { success: true };
+    }),
   }),
 });
 
