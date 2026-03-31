@@ -326,3 +326,20 @@
 - [ ] Agregar tooltips informativos
 - [ ] Crear pruebas de UI
 - [ ] Crear checkpoint de Fase 8
+
+
+## PLAN UNIFICADO - FASE 9: Documentación y Capacitación
+
+- [x] Crear README.md con descripción general del proyecto
+- [x] Crear ADMIN_GUIDE.md con guía para administradores
+- [x] Crear USER_GUIDE.md con guía para residentes
+- [x] Crear TROUBLESHOOTING.md con FAQ y soluciones
+- [x] Crear DEPLOYMENT.md con instrucciones de despliegue
+- [ ] Crear ARCHITECTURE.md con diagrama de arquitectura
+- [ ] Crear API_DOCUMENTATION.md con endpoints disponibles
+- [ ] Crear PROCEDURES.md con procedimientos paso a paso
+- [ ] Crear CHANGELOG.md con historial de cambios
+- [ ] Crear CONTRIBUTING.md para desarrolladores
+- [ ] Documentar variables de entorno
+- [ ] Crear guía de seguridad
+- [ ] Crear checkpoint de Fase 9
