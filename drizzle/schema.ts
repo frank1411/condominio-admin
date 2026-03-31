@@ -117,7 +117,9 @@ export const payments = mysqlTable("payments", {
   apartmentId: int("apartmentId").notNull(), // FK a apartments
   month: varchar("month", { length: 7 }).notNull(), // "2026-03" formato YYYY-MM
   voucherNumber: varchar("voucherNumber", { length: 100 }),
-  voucherImage: longtext("voucherImage"), // Base64 o URL de imagen
+  voucherImage: longtext("voucherImage"), // DEPRECATED: Base64 antiguo, migrar a S3
+  voucherImageUrl: varchar("voucherImageUrl", { length: 500 }), // URL de S3
+  voucherImageKey: varchar("voucherImageKey", { length: 255 }), // Clave en S3 para eliminar
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: mysqlEnum("currency", ["USD", "VES"]).default("USD"),
   status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending"),

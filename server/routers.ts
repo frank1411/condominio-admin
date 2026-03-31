@@ -306,6 +306,65 @@ export const appRouter = router({
       if (!ctx.user.apartmentId) return [];
       return await db.getPaymentsByApartment(ctx.user.apartmentId);
     }),
+
+    uploadVoucher: protectedProcedure
+      .input(z.object({
+        paymentId: z.number(),
+        fileData: z.string(),
+        fileName: z.string(),
+        mimeType: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const payment = await db.getPaymentById(input.paymentId);
+        if (!payment) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Pago no encontrado" });
+        }
+
+        if (payment.userId !== ctx.user.id && ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "No tienes permiso para subir este comprobante" });
+        }
+
+        try {
+          const fileBuffer = Buffer.from(input.fileData, "base64");
+          const result = await db.uploadPaymentVoucher(
+            input.paymentId,
+            fileBuffer,
+            input.fileName,
+            input.mimeType
+          );
+
+          await db.createAuditLog({
+            userId: ctx.user.id,
+            action: "upload_voucher",
+            entityType: "payment",
+            entityId: input.paymentId,
+            details: `Comprobante subido: ${input.fileName}`,
+          });
+
+          return { success: true, url: result.url };
+        } catch (error) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: error instanceof Error ? error.message : "Error al subir comprobante",
+          });
+        }
+      }),
+
+    getVoucher: protectedProcedure
+      .input(z.object({ paymentId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const payment = await db.getPaymentById(input.paymentId);
+        if (!payment) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Pago no encontrado" });
+        }
+
+        if (payment.userId !== ctx.user.id && ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "No tienes permiso para ver este comprobante" });
+        }
+
+        const url = await db.getPaymentVoucherUrl(input.paymentId);
+        return { url };
+      }),
   }),
 
   // ===== GESTIÓN DE DEUDAS =====

@@ -1191,3 +1191,137 @@ export async function notifyDebtPaid(userId: number, apartmentId: number, month:
     actionUrl: `/user/debts`,
   });
 }
+
+
+// ===== FASE 4: ALMACENAMIENTO S3 =====
+
+/**
+ * Subir comprobante de pago a S3
+ */
+export async function uploadPaymentVoucher(
+  paymentId: number,
+  fileBuffer: Buffer | Uint8Array,
+  fileName: string,
+  mimeType: string
+) {
+  const { storagePut } = await import("./storage");
+  
+  try {
+    // Validar tipo MIME
+    const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowedMimeTypes.includes(mimeType)) {
+      throw new Error(`Tipo de archivo no permitido: ${mimeType}`);
+    }
+
+    // Validar tamaño máximo (5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (fileBuffer.length > maxSize) {
+      throw new Error(`Archivo muy grande. Máximo: 5MB`);
+    }
+
+    // Generar clave única en S3
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(7);
+    const extension = getFileExtension(mimeType);
+    const s3Key = `payments/${paymentId}/${timestamp}-${randomSuffix}.${extension}`;
+
+    // Subir a S3
+    const { url, key } = await storagePut(s3Key, fileBuffer, mimeType);
+
+    // Guardar URL y clave en BD
+    const db = await getDb();
+    if (!db) throw new Error("Database connection failed");
+
+    const { eq } = await import("drizzle-orm");
+    await db
+      .update(payments)
+      .set({
+        voucherImageUrl: url,
+        voucherImageKey: key,
+        updatedAt: new Date(),
+      })
+      .where(eq(payments.id, paymentId));
+
+    return { url, key };
+  } catch (error) {
+    console.error("[S3] Error uploading voucher:", error);
+    throw error;
+  }
+}
+
+/**
+ * Obtener URL del comprobante de pago
+ */
+export async function getPaymentVoucherUrl(paymentId: number): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const { eq } = await import("drizzle-orm");
+  
+  try {
+    const payment = await db
+      .select({ voucherImageUrl: payments.voucherImageUrl })
+      .from(payments)
+      .where(eq(payments.id, paymentId))
+      .limit(1);
+
+    return payment[0]?.voucherImageUrl || null;
+  } catch (error) {
+    console.error("[S3] Error getting voucher URL:", error);
+    return null;
+  }
+}
+
+/**
+ * Eliminar comprobante de pago de S3
+ */
+export async function deletePaymentVoucher(paymentId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  const { eq } = await import("drizzle-orm");
+  
+  try {
+    // Obtener clave del archivo
+    const payment = await db
+      .select({ voucherImageKey: payments.voucherImageKey })
+      .from(payments)
+      .where(eq(payments.id, paymentId))
+      .limit(1);
+
+    if (!payment[0]?.voucherImageKey) {
+      return true; // No hay archivo que eliminar
+    }
+
+    // TODO: Implementar eliminación en S3 cuando la API lo permita
+    // Por ahora solo limpiamos la BD
+
+    // Limpiar referencias en BD
+    await db
+      .update(payments)
+      .set({
+        voucherImageUrl: null,
+        voucherImageKey: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(payments.id, paymentId));
+
+    return true;
+  } catch (error) {
+    console.error("[S3] Error deleting voucher:", error);
+    return false;
+  }
+}
+
+/**
+ * Obtener extension de archivo basada en MIME type
+ */
+function getFileExtension(mimeType: string): string {
+  const mimeToExt: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "application/pdf": "pdf",
+  };
+  return mimeToExt[mimeType] || "bin";
+}

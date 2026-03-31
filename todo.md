@@ -226,3 +226,23 @@
 - [x] Pruebas unitarias pasando
 - [ ] Crear página de historial de notificaciones
 - [ ] Crear checkpoint de Fase 3
+
+
+## PLAN UNIFICADO - FASE 4: Almacenamiento S3
+
+- [x] Agregar columnas voucherImageUrl y voucherImageKey a tabla payments
+- [x] Generar migracion SQL con drizzle-kit
+- [x] Ejecutar migracion en base de datos
+- [x] Crear funcion uploadPaymentVoucher() en db.ts
+- [x] Crear funcion getPaymentVoucherUrl() en db.ts
+- [x] Crear funcion deletePaymentVoucher() en db.ts
+- [x] Crear API payments.uploadVoucher en routers.ts
+- [x] Crear API payments.getVoucher en routers.ts
+- [x] Agregar validacion de tipo MIME
+- [x] Agregar validacion de tamano maximo (5MB)
+- [x] Crear componente VoucherUpload.tsx
+- [x] Crear componente VoucherViewer.tsx
+- [ ] Integrar en PaymentForm.tsx
+- [ ] Integrar en PaymentReview.tsx
+- [ ] Crear pruebas unitarias
+- [ ] Crear checkpoint de Fase 4
