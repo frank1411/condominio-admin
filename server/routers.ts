@@ -418,31 +418,27 @@ export const appRouter = router({
 
     dashboard: adminProcedure.query(async () => {
       const currentMonth = new Date().toISOString().slice(0, 7);
-      const allApartments = await db.getAllApartments();
-      const debts = await db.getDebtsByMonth(currentMonth);
+      const sortBy = 'floor'; // Default sort by floor
       
-      // Verificar TODAS las deudas pendientes de cada apartamento (no solo del mes actual)
-      const apartmentsWithAnyDebt = new Set<number>();
-      for (const apartment of allApartments) {
-        const hasPending = await db.hasAnyPendingDebt(apartment.id);
-        if (hasPending) {
-          apartmentsWithAnyDebt.add(apartment.id);
-        }
-      }
+      // Usar la nueva función que retorna TODOS los apartamentos
+      const debts = await db.getAllApartmentsWithDebtStatus(currentMonth, sortBy);
       
-      // Calcular totales correctamente
-      const totalApartments = allApartments.length;
-      const apartmentsWithoutDebt = totalApartments - apartmentsWithAnyDebt.size;
-      const totalPending = debts.reduce((sum, d) => sum + parseFloat(d.pendingAmount), 0);
+      // Calcular totales
+      const totalApartments = debts.length;
+      const apartmentsWithDebt = debts.filter(d => !d.isPaid);
+      const apartmentsWithoutDebt = totalApartments - apartmentsWithDebt.length;
+      const totalPending = apartmentsWithDebt.reduce((sum, d) => sum + parseFloat(d.pendingAmount), 0);
+      const totalDue = debts.reduce((sum, d) => sum + parseFloat(d.totalDue), 0);
       
       return {
         currentMonth,
         debts,
+        sortBy,
         summary: {
           total: totalApartments,
           paid: apartmentsWithoutDebt,
-          pending: apartmentsWithAnyDebt.size,
-          totalDue: debts.reduce((sum, d) => sum + parseFloat(d.totalDue), 0),
+          pending: apartmentsWithDebt.length,
+          totalDue,
           totalPending,
         },
       };

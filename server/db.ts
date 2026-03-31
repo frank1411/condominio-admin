@@ -1605,3 +1605,91 @@ export async function getAllApartmentDebts(apartmentId: number) {
   
   return result;
 }
+
+/**
+ * Nueva función: Retorna TODOS los apartamentos con su estado de deuda para un mes específico
+ * Incluye apartamentos sin deuda registrada (aparecerán como "Pagado")
+ * Soporta ordenamiento por: 'floor' (piso), 'name' (nombre), 'status' (estado de pago)
+ */
+export async function getAllApartmentsWithDebtStatus(month: string, sortBy: 'floor' | 'name' | 'status' = 'floor') {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const { eq: drizzleEq, asc } = await import('drizzle-orm');
+  
+  // Obtener todos los apartamentos
+  const allApts = await db.select().from(apartments).orderBy(asc(apartments.id));
+  
+  // Obtener deudas del mes actual
+  const debts = await db
+    .select({
+      id: monthlyDebts.id,
+      apartmentId: monthlyDebts.apartmentId,
+      unitName: apartments.unitName,
+      month: monthlyDebts.month,
+      totalDue: monthlyDebts.totalDue,
+      totalPaid: monthlyDebts.totalPaid,
+      pendingAmount: monthlyDebts.pendingAmount,
+      currency: monthlyDebts.currency,
+      isPaid: monthlyDebts.isPaid,
+      createdAt: monthlyDebts.createdAt,
+      updatedAt: monthlyDebts.updatedAt,
+      floorId: apartments.floorId,
+    })
+    .from(monthlyDebts)
+    .innerJoin(apartments, drizzleEq(monthlyDebts.apartmentId, apartments.id))
+    .where(drizzleEq(monthlyDebts.month, month));
+  
+  // Crear mapa de deudas por apartamento
+  const debtMap = new Map(debts.map(d => [d.apartmentId, d]));
+  
+  // Obtener información de pisos
+  const allFloors = await db.select().from(floors);
+  const floorMap = new Map(allFloors.map(f => [f.id, f]));
+  
+  // Construir resultado con TODOS los apartamentos
+  const result = allApts.map(apt => {
+    const debt = debtMap.get(apt.id);
+    const floor = floorMap.get(apt.floorId);
+    
+    return {
+      id: debt?.id || null,
+      apartmentId: apt.id,
+      unitName: apt.unitName || `Apt-${apt.apartmentNumber}`,
+      month: debt?.month || month,
+      totalDue: debt?.totalDue || "0.00",
+      totalPaid: debt?.totalPaid || "0.00",
+      pendingAmount: debt?.pendingAmount || "0.00",
+      currency: debt?.currency || "USD",
+      isPaid: debt?.isPaid ?? true, // Si no hay deuda, considerarlo pagado
+      createdAt: debt?.createdAt,
+      updatedAt: debt?.updatedAt,
+      floorId: apt.floorId,
+      floorName: floor?.floorName || `Piso ${floor?.floorNumber}`,
+      apartmentNumber: apt.apartmentNumber,
+    };
+  });
+  
+  // Aplicar ordenamiento
+  if (sortBy === 'name') {
+    result.sort((a, b) => (a.unitName || '').localeCompare(b.unitName || ''));
+  } else if (sortBy === 'status') {
+    result.sort((a, b) => {
+      // Primero pendientes, luego pagados
+      if (a.isPaid === b.isPaid) {
+        return (a.unitName || '').localeCompare(b.unitName || '');
+      }
+      return a.isPaid ? 1 : -1;
+    });
+  } else {
+    // Por defecto, ordenar por piso y luego por número de apartamento
+    result.sort((a, b) => {
+      if (a.floorId !== b.floorId) {
+        return a.floorId - b.floorId;
+      }
+      return a.apartmentNumber.localeCompare(b.apartmentNumber);
+    });
+  }
+  
+  return result;
+}

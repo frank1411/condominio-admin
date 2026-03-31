@@ -8,6 +8,7 @@ import { ManualPaymentModal } from "@/components/ManualPaymentModal";
 
 export default function AdminDashboard() {
   const [paymentModal, setPaymentModal] = useState<{ open: boolean; apartmentId?: number; apartmentName?: string; pendingDebt?: number }>({ open: false });
+  const [sortBy, setSortBy] = useState<'floor' | 'name' | 'status'>('floor');
   const { data: dashboard, isLoading, refetch } = trpc.debts.dashboard.useQuery();
   const { data: config } = trpc.config.get.useQuery();
 
@@ -79,13 +80,42 @@ export default function AdminDashboard() {
 
       {/* Estado de Pagos */}
       <Card>
-        <CardHeader>
-          <CardTitle>Estado de Pagos por Apartamento</CardTitle>
-          <CardDescription>Mes: {dashboard.currentMonth} - Haz click en un apartamento para registrar pago manual</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Estado de Pagos por Apartamento</CardTitle>
+            <CardDescription>Mes: {dashboard.currentMonth} - Haz click en un apartamento para registrar pago manual</CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'floor' | 'name' | 'status')}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="floor">Ordenar por Piso</option>
+              <option value="name">Ordenar por Nombre</option>
+              <option value="status">Ordenar por Estado</option>
+            </select>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 max-h-96 overflow-y-auto">
-            {dashboard.debts.map((debt) => (
+            {dashboard.debts
+              .sort((a, b) => {
+                if (sortBy === 'name') {
+                  return (a.unitName || '').localeCompare(b.unitName || '');
+                } else if (sortBy === 'status') {
+                  if (a.isPaid === b.isPaid) {
+                    return (a.unitName || '').localeCompare(b.unitName || '');
+                  }
+                  return a.isPaid ? 1 : -1;
+                }
+                // Por defecto, ordenar por piso
+                if (a.floorId !== b.floorId) {
+                  return a.floorId - b.floorId;
+                }
+                return a.apartmentNumber.localeCompare(b.apartmentNumber);
+              })
+              .map((debt) => (
               <div
                 key={debt.id}
                 className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
