@@ -269,3 +269,24 @@
 - [ ] Agregar pagina MyReports.tsx en user
 - [ ] Crear pruebas unitarias
 - [ ] Crear checkpoint de Fase 5
+
+
+## PLAN UNIFICADO - FASE 6: Testing y Despliegue
+
+- [ ] Crear pruebas unitarias para funciones de db.ts
+- [ ] Crear pruebas unitarias para APIs de routers.ts
+- [ ] Crear pruebas de integración para flujo de pagos
+- [ ] Crear pruebas de integración para liquidación de deudas
+- [ ] Crear pruebas de integración para notificaciones
+- [ ] Crear pruebas de integración para reportes
+- [ ] Ejecutar suite completa de pruebas
+- [ ] Verificar cobertura de tests (objetivo: 80%+)
+- [ ] Testing manual: flujo de pago completo
+- [ ] Testing manual: aprobación y rechazo de pagos
+- [ ] Testing manual: notificaciones en tiempo real
+- [ ] Testing manual: descarga de reportes
+- [ ] Testing manual: subida de comprobantes S3
+- [ ] Verificar performance en navegador
+- [ ] Verificar responsive design en móvil
+- [ ] Crear checkpoint final
+- [ ] Desplegar a producción
