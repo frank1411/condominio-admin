@@ -8,7 +8,7 @@ import { ManualPaymentModal } from "@/components/ManualPaymentModal";
 
 export default function AdminDashboard() {
   const [paymentModal, setPaymentModal] = useState<{ open: boolean; apartmentId?: number; apartmentName?: string; pendingDebt?: number }>({ open: false });
-  const [sortBy, setSortBy] = useState<'floor' | 'name' | 'status'>('floor');
+  const [sortBy, setSortBy] = useState<'floor' | 'debtDesc' | 'debtAsc'>('floor');
   const { data: dashboard, isLoading, refetch } = trpc.debts.dashboard.useQuery();
   const { data: config } = trpc.config.get.useQuery();
 
@@ -88,12 +88,12 @@ export default function AdminDashboard() {
           <div className="flex gap-2">
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'floor' | 'name' | 'status')}
+              onChange={(e) => setSortBy(e.target.value as 'floor' | 'debtDesc' | 'debtAsc')}
               className="px-3 py-2 border border-gray-300 rounded-md text-sm"
             >
               <option value="floor">Ordenar por Piso</option>
-              <option value="name">Ordenar por Nombre</option>
-              <option value="status">Ordenar por Estado</option>
+              <option value="debtDesc">Deuda Mayor a Menor</option>
+              <option value="debtAsc">Deuda Menor a Mayor</option>
             </select>
           </div>
         </CardHeader>
@@ -101,13 +101,12 @@ export default function AdminDashboard() {
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {dashboard.debts
               .sort((a, b) => {
-                if (sortBy === 'name') {
-                  return (a.unitName || '').localeCompare(b.unitName || '');
-                } else if (sortBy === 'status') {
-                  if (a.isPaid === b.isPaid) {
-                    return (a.unitName || '').localeCompare(b.unitName || '');
-                  }
-                  return a.isPaid ? 1 : -1;
+                if (sortBy === 'debtDesc') {
+                  // Mayor a Menor
+                  return parseFloat(b.pendingAmount) - parseFloat(a.pendingAmount);
+                } else if (sortBy === 'debtAsc') {
+                  // Menor a Mayor
+                  return parseFloat(a.pendingAmount) - parseFloat(b.pendingAmount);
                 }
                 // Por defecto, ordenar por piso
                 if (a.floorId !== b.floorId) {
