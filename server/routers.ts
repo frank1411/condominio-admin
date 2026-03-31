@@ -646,6 +646,78 @@ export const appRouter = router({
       return { success: true };
     }),
   }),
+
+  // ===== REPORTES =====
+  reports: router({
+    monthlyData: protectedProcedure
+      .input(z.object({
+        apartmentId: z.number().optional(),
+        month: z.string(),
+      }))
+      .query(async ({ input, ctx }) => {
+        const apartmentId = input.apartmentId || ctx.user.apartmentId;
+        
+        if (!apartmentId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Apartamento no especificado" });
+        }
+
+        // Verificar permisos
+        if (ctx.user.role !== "admin" && ctx.user.apartmentId !== apartmentId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "No tienes permiso para ver este reporte" });
+        }
+
+        const reportData = await db.getMonthlyReportData(apartmentId, input.month);
+        if (!reportData) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Reporte no encontrado" });
+        }
+
+        return reportData;
+      }),
+
+    userSummary: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUserPaymentsSummary(ctx.user.id);
+    }),
+
+    debtsSummary: adminProcedure
+      .input(z.object({ month: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getMonthlyDebtsSummary(input.month);
+      }),
+
+    paymentsByStatus: adminProcedure
+      .input(z.object({
+        status: z.enum(["pending", "approved", "rejected"]),
+        month: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        return await db.getPaymentsByStatus(input.status, input.month);
+      }),
+
+    exportJSON: protectedProcedure
+      .input(z.object({
+        apartmentId: z.number().optional(),
+        month: z.string(),
+      }))
+      .query(async ({ input, ctx }) => {
+        const apartmentId = input.apartmentId || ctx.user.apartmentId;
+        
+        if (!apartmentId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Apartamento no especificado" });
+        }
+
+        // Verificar permisos
+        if (ctx.user.role !== "admin" && ctx.user.apartmentId !== apartmentId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "No tienes permiso para exportar este reporte" });
+        }
+
+        const reportJSON = await db.generateReportJSON(apartmentId, input.month);
+        if (!reportJSON) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Reporte no encontrado" });
+        }
+
+        return reportJSON;
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

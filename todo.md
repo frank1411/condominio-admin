@@ -246,3 +246,26 @@
 - [ ] Integrar en PaymentReview.tsx
 - [ ] Crear pruebas unitarias
 - [ ] Crear checkpoint de Fase 4
+
+
+## PLAN UNIFICADO - FASE 5: Reportes
+
+- [x] Instalar librerías pdfkit y exceljs
+- [x] Crear funciones de reportes en db.ts:
+  - [x] getMonthlyReportData()
+  - [x] getUserPaymentsSummary()
+  - [x] getMonthlyDebtsSummary()
+  - [x] getPaymentsByStatus()
+  - [x] generateReportJSON()
+- [x] Crear APIs en routers.ts:
+  - [x] reports.monthlyData
+  - [x] reports.userSummary
+  - [x] reports.debtsSummary
+  - [x] reports.paymentsByStatus
+  - [x] reports.exportJSON
+- [ ] Crear componente ReportGenerator.tsx
+- [ ] Crear componente ReportViewer.tsx
+- [ ] Agregar pagina Reports.tsx en admin
+- [ ] Agregar pagina MyReports.tsx en user
+- [ ] Crear pruebas unitarias
+- [ ] Crear checkpoint de Fase 5
