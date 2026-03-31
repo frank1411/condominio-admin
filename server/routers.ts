@@ -421,10 +421,18 @@ export const appRouter = router({
       const allApartments = await db.getAllApartments();
       const debts = await db.getDebtsByMonth(currentMonth);
       
+      // Verificar TODAS las deudas pendientes de cada apartamento (no solo del mes actual)
+      const apartmentsWithAnyDebt = new Set<number>();
+      for (const apartment of allApartments) {
+        const hasPending = await db.hasAnyPendingDebt(apartment.id);
+        if (hasPending) {
+          apartmentsWithAnyDebt.add(apartment.id);
+        }
+      }
+      
       // Calcular totales correctamente
       const totalApartments = allApartments.length;
-      const apartmentsWithDebt = new Set(debts.filter(d => !d.isPaid).map(d => d.apartmentId));
-      const apartmentsWithoutDebt = totalApartments - apartmentsWithDebt.size;
+      const apartmentsWithoutDebt = totalApartments - apartmentsWithAnyDebt.size;
       const totalPending = debts.reduce((sum, d) => sum + parseFloat(d.pendingAmount), 0);
       
       return {
@@ -433,7 +441,7 @@ export const appRouter = router({
         summary: {
           total: totalApartments,
           paid: apartmentsWithoutDebt,
-          pending: apartmentsWithDebt.size,
+          pending: apartmentsWithAnyDebt.size,
           totalDue: debts.reduce((sum, d) => sum + parseFloat(d.totalDue), 0),
           totalPending,
         },

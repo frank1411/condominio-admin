@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, desc, isNull } from "drizzle-orm";
+import { eq, and, gte, lte, desc, isNull, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, 
@@ -1552,4 +1552,56 @@ export async function generateReportJSON(apartmentId: number, month: string) {
       totalPending: reportData.debts.reduce((sum, d) => sum + parseFloat(d.pendingAmount || "0"), 0).toFixed(2),
     },
   };
+}
+
+
+/**
+ * Obtener TODAS las deudas pendientes de un apartamento (sin importar el mes)
+ * Retorna true si existe al menos una deuda sin pagar
+ */
+export async function hasAnyPendingDebt(apartmentId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  const { eq: drizzleEq } = await import('drizzle-orm');
+  const result = await db
+    .select({ id: monthlyDebts.id })
+    .from(monthlyDebts)
+    .where(
+      and(
+        drizzleEq(monthlyDebts.apartmentId, apartmentId),
+        drizzleEq(monthlyDebts.isPaid, false)
+      )
+    )
+    .limit(1);
+  
+  return result.length > 0;
+}
+
+/**
+ * Obtener todas las deudas de un apartamento (sin importar el mes)
+ */
+export async function getAllApartmentDebts(apartmentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const { eq: drizzleEq } = await import('drizzle-orm');
+  const result = await db
+    .select({
+      id: monthlyDebts.id,
+      apartmentId: monthlyDebts.apartmentId,
+      month: monthlyDebts.month,
+      totalDue: monthlyDebts.totalDue,
+      totalPaid: monthlyDebts.totalPaid,
+      pendingAmount: monthlyDebts.pendingAmount,
+      currency: monthlyDebts.currency,
+      isPaid: monthlyDebts.isPaid,
+      createdAt: monthlyDebts.createdAt,
+      updatedAt: monthlyDebts.updatedAt,
+    })
+    .from(monthlyDebts)
+    .where(drizzleEq(monthlyDebts.apartmentId, apartmentId))
+    .orderBy(asc(monthlyDebts.month));
+  
+  return result;
 }
