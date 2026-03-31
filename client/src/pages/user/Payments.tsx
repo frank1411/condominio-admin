@@ -183,13 +183,14 @@ export default function UserPayments() {
         <CardContent>
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {payments && payments.length > 0 ? (
-              payments.map((payment) => (
+              payments.slice(0, 12).map((payment) => (
                 <div
                   key={payment.id}
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
                 >
                   <div className="flex-1">
-                    <p className="font-medium">Mes: {payment.month}</p>
+                    <p className="font-medium">{payment.unitName || `Apartamento ${payment.apartmentId}`}</p>
+                    <p className="text-sm text-gray-600">Mes: {payment.month}</p>
                     <p className="text-sm text-gray-600">
                       Monto: {payment.currency} {parseFloat(payment.amount).toFixed(2)}
                     </p>

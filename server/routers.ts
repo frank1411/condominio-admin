@@ -135,11 +135,21 @@ export const appRouter = router({
         apartmentId: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        // Obtener configuracion del condominio para la tasa de cambio
+        const config = await db.getCondominiumConfig();
+        const exchangeRate = config ? parseFloat(config.exchangeRate || "1") : 1;
+        
+        // Convertir VES a USD si es necesario
+        let amountInUSD = parseFloat(input.amount);
+        if (input.currency === "VES" && exchangeRate > 0) {
+          amountInUSD = amountInUSD / exchangeRate;
+        }
+        
         const result = await db.createCharge({
           name: input.name,
           description: input.description,
-          amount: input.amount,
-          currency: input.currency,
+          amount: amountInUSD.toFixed(2),
+          currency: "USD", // Siempre guardar en USD
           isRecurring: input.isRecurring,
           isActive: true,
           apartmentId: input.apartmentId || null,
