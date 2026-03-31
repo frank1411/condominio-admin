@@ -308,3 +308,21 @@
 - [ ] Crear pruebas de performance
 - [ ] Verificar Core Web Vitals
 - [ ] Crear checkpoint de Fase 7
+
+
+## PLAN UNIFICADO - FASE 8: Mejoras Finales
+
+- [x] Crear componente ConfirmDialog.tsx para diálogos reutilizables
+- [x] Crear componente FormValidationError.tsx para errores
+- [x] Crear componente LoadingSkeleton.tsx con variantes
+- [x] Crear página NotificationHistory.tsx con filtros
+- [x] Agregar filtros por tipo de notificación
+- [x] Agregar acción marcar como leído
+- [x] Agregar acción marcar todo como leído
+- [x] Compilación sin errores
+- [ ] Integrar ConfirmDialog en PaymentReview para aprobar/rechazar
+- [ ] Agregar validación visual en formularios
+- [ ] Mejorar accesibilidad (aria-labels)
+- [ ] Agregar tooltips informativos
+- [ ] Crear pruebas de UI
+- [ ] Crear checkpoint de Fase 8
