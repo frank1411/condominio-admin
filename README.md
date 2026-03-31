@@ -5,39 +5,26 @@
 ## 🎯 Características Principales
 
 ### Para Administradores
-- **Dashboard ejecutivo** con métricas en tiempo real (total de apartamentos, pagos al día, deudas pendientes)
-- **Gestión de pagos** con aprobación/rechazo de comprobantes
-- **Liquidación automática** de deudas al aprobar pagos
-- **Generación de reportes** mensuales en PDF y Excel
-- **Gestión de usuarios** (residentes, admins, aprobación)
-- **Auditoría completa** de todas las acciones
-- **Notificaciones** en tiempo real
+
+CondoAdmin Pro proporciona a los administradores un conjunto completo de herramientas para gestionar eficientemente el condominio. El dashboard ejecutivo muestra métricas en tiempo real incluyendo el total de apartamentos, cantidad de pagos al día, cantidad de deudas pendientes y el monto total adeudado. Los administradores pueden revisar y aprobar pagos cargados por residentes, gestionar usuarios y sus permisos, crear cobros colectivos (para todos) o individuales (para apartamentos específicos), generar reportes mensuales en PDF y Excel, y configurar parámetros del condominio como cuota base, tasa de cambio y patrones de nombres de apartamentos.
 
 ### Para Residentes
-- **Dashboard personal** con estado de deudas y pagos
-- **Carga de comprobantes** de pago con almacenamiento en S3
-- **Historial de pagos** y deudas
-- **Notificaciones** de pagos aprobados/rechazados
-- **Perfil personal** con información de contacto
+
+Los residentes tienen acceso a un portal personalizado donde pueden ver su dashboard con estado de deudas y pagos, consultar el historial de sus últimos 12 pagos registrados, ver el detalle de deudas pendientes organizadas por mes, recibir notificaciones sobre aprobaciones y rechazos de pagos, y acceder a su información de perfil incluyendo el nombre de su apartamento.
 
 ### Características Técnicas
-- **Transacciones ACID** para integridad de datos
-- **Validaciones robustas** de pagos y deudas
-- **Paginación inteligente** para mejor performance
-- **Almacenamiento en S3** para comprobantes
-- **Notificaciones** en tiempo real
-- **Autenticación OAuth** segura
-- **Suite completa de pruebas** (88+ tests)
-- **Responsive design** para móvil y desktop
+
+La plataforma está construida con tecnología moderna y robusta. Utiliza tRPC para comunicación end-to-end con type-safety, Drizzle ORM para gestión de base de datos con migraciones versionadas, validación de datos con Zod en cliente y servidor, autenticación OAuth segura integrada con Manus, y conversión automática de monedas VES a USD usando tasa de cambio configurable. Incluye suite de pruebas unitarias con 7 suites activas, responsive design para móvil y desktop, y sistema de notificaciones integrado.
 
 ## 🚀 Inicio Rápido
 
 ### Requisitos
-- Node.js 22+
-- pnpm
-- MySQL/TiDB
+
+Para ejecutar CondoAdmin Pro necesitas Node.js 22 o superior, pnpm como gestor de paquetes, y una base de datos MySQL 8+ o TiDB.
 
 ### Instalación
+
+Para instalar y ejecutar el proyecto localmente:
 
 ```bash
 # Clonar repositorio
@@ -48,9 +35,10 @@ cd condominio-admin
 pnpm install
 
 # Configurar variables de entorno
-cp .env.example .env
+# Las variables se inyectan automáticamente en Manus
+# Para desarrollo local, copia .env.example a .env
 
-# Ejecutar migraciones
+# Ejecutar migraciones de base de datos
 pnpm drizzle-kit generate
 pnpm drizzle-kit migrate
 
@@ -58,122 +46,98 @@ pnpm drizzle-kit migrate
 pnpm dev
 ```
 
-La aplicación estará disponible en `http://localhost:3000`
+La aplicación estará disponible en `http://localhost:3000`. El servidor incluye hot-reload automático para cambios en código.
 
 ## 📊 Estructura del Proyecto
 
 ```
 condominio-admin/
-├── client/                 # Frontend React
+├── client/                 # Frontend React 19 + Tailwind 4
 │   ├── src/
 │   │   ├── pages/         # Páginas por rol (admin, user)
-│   │   ├── components/    # Componentes reutilizables
-│   │   ├── lib/           # Utilidades y configuración
-│   │   └── App.tsx        # Rutas y layout
+│   │   ├── components/    # Componentes reutilizables (DashboardLayout, etc)
+│   │   ├── lib/           # Utilidades y configuración (tRPC client)
+│   │   └── App.tsx        # Rutas y layout principal
 │   └── public/            # Archivos estáticos
 ├── server/                # Backend Express + tRPC
-│   ├── routers.ts         # APIs tRPC
+│   ├── routers.ts         # APIs tRPC (34+ procedimientos)
 │   ├── db.ts              # Funciones de base de datos
-│   ├── storage.ts         # Integración S3
-│   └── _core/             # Configuración interna
-├── drizzle/               # Migraciones y schema
-└── shared/                # Código compartido
+│   ├── exports.ts         # Generación de PDF y Excel
+│   └── _core/             # Configuración interna (OAuth, context, etc)
+├── drizzle/               # Migraciones y schema de base de datos
+└── shared/                # Código compartido entre cliente y servidor
 ```
 
 ## 🔐 Seguridad
 
-- **OAuth 2.0** para autenticación
-- **JWT** para sesiones
-- **ACID transactions** para consistencia de datos
-- **Validaciones** en cliente y servidor
-- **Rate limiting** en APIs
-- **Auditoría** de todas las acciones
+CondoAdmin Pro implementa múltiples capas de seguridad. Utiliza OAuth 2.0 para autenticación segura, JWT para sesiones, validaciones en cliente y servidor para prevenir inyecciones, control de acceso basado en roles (admin/usuario), y auditoría de todas las acciones administrativas.
 
 ## 📈 Performance
 
-- **Paginación** en todas las listas
-- **Lazy loading** de imágenes
-- **Caché** en frontend
-- **Índices** en base de datos
-- **Compresión gzip** en respuestas
-- **Bundle size** optimizado
+La plataforma está optimizada para performance. Implementa lazy loading de componentes, caché en frontend, índices en base de datos en campos clave, compresión gzip en respuestas, y bundle size optimizado. El ordenamiento flexible en el dashboard permite a administradores ver datos en el orden que prefieran sin recargar la página.
 
 ## 🧪 Testing
 
 ```bash
-# Ejecutar pruebas
+# Ejecutar todas las pruebas
 pnpm test
 
-# Ejecutar pruebas con cobertura
+# Ejecutar pruebas de un archivo específico
+pnpm test phase16
+
+# Ver cobertura de pruebas
 pnpm test:coverage
 
-# Ejecutar build de producción
+# Build de producción
 pnpm build
 ```
 
+Actualmente hay 7 suites de pruebas unitarias que validan funcionalidades críticas incluyendo validación de deudas, conversión de moneda, y generación de reportes.
+
 ## 📚 Documentación Adicional
 
-- [Guía del Administrador](./docs/ADMIN_GUIDE.md)
-- [Guía del Usuario](./docs/USER_GUIDE.md)
-- [Documentación de API](./docs/API_DOCUMENTATION.md)
-- [Arquitectura del Sistema](./docs/ARCHITECTURE.md)
-- [Procedimientos](./docs/PROCEDURES.md)
-- [Troubleshooting](./docs/TROUBLESHOOTING.md)
+- [Guía del Administrador](./ADMIN_GUIDE.md) - Instrucciones completas para administradores
+- [Guía del Usuario](./USER_GUIDE.md) - Manual para residentes
+- [Guía de Despliegue](./DEPLOYMENT.md) - Instrucciones de deployment
+- [Troubleshooting](./TROUBLESHOOTING.md) - Solución de problemas comunes
 
 ## 🔄 Roadmap Futuro
 
-### Fase 1: Seguridad (✅ Completado)
-- Transacciones ACID
-- Validaciones robustas
-- Control de concurrencia
+### Fases Completadas
 
-### Fase 2: UX (✅ Completado)
-- Tablas avanzadas con búsqueda
-- Filtros y ordenamiento
-- Paginación
+**Fase 1: Seguridad** - Implementadas transacciones ACID, validaciones robustas y control de concurrencia.
 
-### Fase 3: Notificaciones (✅ Completado)
-- Sistema de notificaciones in-app
-- Email de confirmación
-- Recordatorios automáticos
+**Fase 2: Gestión de Pagos** - Implementado sistema completo de registro, aprobación y rechazo de pagos.
 
-### Fase 4: Almacenamiento (✅ Completado)
-- Comprobantes en S3
-- Validación de archivos
-- Thumbnails
+**Fase 3: Notificaciones** - Sistema de notificaciones in-app integrado.
 
-### Fase 5: Reportes (✅ Completado)
-- Reportes mensuales
-- Exportación PDF/Excel
-- Historial de pagos
+**Fase 4: Reportes** - Exportación de reportes en PDF y Excel con múltiples formatos.
 
-### Fase 6: Testing (✅ Completado)
-- Suite de pruebas unitarias
-- 88+ tests pasando
-- Cobertura completa
+**Fase 5: Testing** - Suite de pruebas unitarias con 7 suites activas.
 
-### Fase 7: Performance (🔄 En progreso)
-- Paginación avanzada
-- Lazy loading
-- Caché en frontend
+**Fase 6: Conversión de Moneda** - Conversión automática VES a USD con tasa configurable.
 
-### Fase 8: UX Mejorada (✅ Completado)
-- Diálogos de confirmación
-- Estados de carga
-- Historial de notificaciones
+**Fase 7: Ordenamiento Flexible** - Múltiples opciones de ordenamiento en dashboard.
 
-### Fase 9: Documentación (🔄 En progreso)
-- Guías de usuario
-- Documentación técnica
-- Manuales de procedimientos
+### Fases Futuras
+
+**Fase 8: Búsqueda y Filtros** - Búsqueda de apartamentos y filtros avanzados en dashboard.
+
+**Fase 9: Recordatorios Automáticos** - Envío automático de recordatorios a residentes con deuda vencida.
+
+**Fase 10: Reportes Históricos** - Reportes por rango de fechas para análisis histórico.
+
+**Fase 11: Comprobantes Descargables** - Residentes puedan descargar comprobantes de pago.
+
+**Fase 12: Notificaciones por Correo** - Envío de notificaciones por correo electrónico.
 
 ## 🤝 Contribuir
 
-Las contribuciones son bienvenidas. Por favor, lee [CONTRIBUTING.md](./CONTRIBUTING.md) para más detalles.
+Las contribuciones son bienvenidas. Por favor, lee [CONTRIBUTING.md](./CONTRIBUTING.md) para más detalles sobre el proceso de contribución.
 
 ## 📞 Soporte
 
-Para reportar bugs o solicitar features, abre un issue en el repositorio.
+Para reportar bugs o solicitar features, abre un issue en el repositorio. Para soporte técnico, contacta al equipo de Manus.
 
 ## 📄 Licencia
 
@@ -185,5 +149,5 @@ Desarrollado por el equipo de CondoAdmin Pro.
 
 ---
 
-**Versión:** 1.0.0  
+**Versión:** 2.0  
 **Última actualización:** Marzo 2026
