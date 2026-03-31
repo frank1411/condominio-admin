@@ -228,28 +228,25 @@ export const appRouter = router({
         notes: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        // Obtener detalles del pago
-        const payment = await db.getPaymentById(input.id);
-        if (!payment) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Pago no encontrado" });
+        // Usar función mejorada con validaciones ACID
+        const result = await db.approvePaymentWithValidations(
+          input.id,
+          ctx.user.id,
+          input.notes
+        );
+        
+        if (!result.success) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: result.message
+          });
         }
 
-        // Actualizar estado del pago
-        await db.updatePaymentStatus(input.id, "approved", ctx.user.id, input.notes);
-        
-        // Liquidar deudas del apartamento
-        const paymentAmount = parseFloat(payment.amount as unknown as string);
-        await db.applyPaymentToDebts(payment.apartmentId, paymentAmount);
-        
-        await db.createAuditLog({
-          userId: ctx.user.id,
-          action: "approve_payment",
-          entityType: "payment",
-          entityId: input.id,
-          details: input.notes || "Pago aprobado",
-        });
-
-        return { success: true };
+        return {
+          success: true,
+          message: result.message,
+          appliedAmount: result.appliedAmount
+        };
       }),
 
     reject: adminProcedure

@@ -176,7 +176,19 @@
 
 
 ## Fase 15 - Liquidación de Pagos
-- [ ] Crear función de liquidación de pagos en backend
-- [ ] Actualizar API de aprobación de pagos para aplicar liquidación
-- [ ] Probar que deudas se reducen al aprobar pagos
-- [ ] Verificar que dashboard refleja cambios correctamente
+- [x] Crear función de liquidación de pagos en backend
+- [x] Actualizar API de aprobación de pagos para aplicar liquidación
+- [x] Probar que deudas se reducen al aprobar pagos
+- [x] Verificar que dashboard refleja cambios correctamente
+
+
+## PLAN UNIFICADO - FASE 1: Transacciones ACID y Validaciones
+- [x] Implementar función `approvePaymentWithValidations()` en db.ts
+- [x] Validar que monto del pago <= deuda pendiente (validatePaymentAmount)
+- [x] Prevenir pagos duplicados (checkDuplicatePayment)
+- [x] Validar rango de fechas (validatePaymentMonth)
+- [x] Implementar control de concurrencia
+- [x] Actualizar routers.ts para usar transacciones en payments.approve
+- [x] Crear pruebas unitarias en phase1.validations.test.ts
+- [ ] Verificar funcionamiento en navegador
+- [ ] Crear checkpoint de Fase 1

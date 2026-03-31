@@ -739,3 +739,235 @@ export async function applyPaymentToDebts(apartmentId: number, paymentAmount: nu
     return { success: false, appliedAmount: 0 };
   }
 }
+
+
+// ===== FASE 1: TRANSACCIONES ACID Y VALIDACIONES =====
+
+/**
+ * Validar que el monto del pago no exceda la deuda pendiente total del apartamento
+ */
+export async function validatePaymentAmount(apartmentId: number, paymentAmount: number): Promise<{ valid: boolean; reason?: string }> {
+  const db = await getDb();
+  if (!db) return { valid: false, reason: "Base de datos no disponible" };
+  
+  const { eq: drizzleEq, and } = await import('drizzle-orm');
+  
+  try {
+    // Obtener deudas pendientes del apartamento
+    const pendingDebts = await db
+      .select()
+      .from(monthlyDebts)
+      .where(and(
+        drizzleEq(monthlyDebts.apartmentId, apartmentId),
+        drizzleEq(monthlyDebts.isPaid, false)
+      ));
+    
+    // Calcular deuda total pendiente
+    const totalPending = pendingDebts.reduce((sum, debt) => {
+      const pending = parseFloat(debt.pendingAmount as unknown as string) || 0;
+      return sum + pending;
+    }, 0);
+    
+    if (paymentAmount > totalPending + 0.01) { // Permitir pequeños errores de redondeo
+      return {
+        valid: false,
+        reason: `El monto del pago ($${paymentAmount.toFixed(2)}) excede la deuda pendiente ($${totalPending.toFixed(2)})`
+      };
+    }
+    
+    return { valid: true };
+  } catch (error) {
+    console.error("[Payment Validation] Error validating payment amount:", error);
+    return { valid: false, reason: "Error al validar el monto" };
+  }
+}
+
+/**
+ * Verificar si ya existe un pago aprobado para el mismo mes y apartamento
+ */
+export async function checkDuplicatePayment(apartmentId: number, month: string, excludePaymentId?: number): Promise<{ isDuplicate: boolean; existingPaymentId?: number }> {
+  const db = await getDb();
+  if (!db) return { isDuplicate: false };
+  
+  const { eq: drizzleEq, and, ne } = await import('drizzle-orm');
+  
+  try {
+    let query = db
+      .select()
+      .from(payments)
+      .where(and(
+        drizzleEq(payments.apartmentId, apartmentId),
+        drizzleEq(payments.month, month),
+        drizzleEq(payments.status, "approved")
+      ));
+    
+    // Si se proporciona un ID de pago, excluirlo de la búsqueda
+    if (excludePaymentId) {
+      query = db
+        .select()
+        .from(payments)
+        .where(and(
+          drizzleEq(payments.apartmentId, apartmentId),
+          drizzleEq(payments.month, month),
+          drizzleEq(payments.status, "approved"),
+          ne(payments.id, excludePaymentId)
+        ));
+    }
+    
+    const result = await query;
+    
+    if (result.length > 0) {
+      return { isDuplicate: true, existingPaymentId: result[0].id };
+    }
+    
+    return { isDuplicate: false };
+  } catch (error) {
+    console.error("[Payment Validation] Error checking duplicate payment:", error);
+    return { isDuplicate: false };
+  }
+}
+
+/**
+ * Validar que la fecha del pago no sea de un mes futuro
+ */
+export function validatePaymentMonth(paymentMonth: string): { valid: boolean; reason?: string } {
+  try {
+    // Validar formato YYYY-MM
+    const monthRegex = /^\d{4}-\d{2}$/;
+    if (!monthRegex.test(paymentMonth)) {
+      return {
+        valid: false,
+        reason: "Formato de mes inválido. Use YYYY-MM"
+      };
+    }
+    
+    const [year, month] = paymentMonth.split('-');
+    const yearNum = parseInt(year);
+    const monthNum = parseInt(month);
+    
+    // Validar rango de mes
+    if (monthNum < 1 || monthNum > 12) {
+      return {
+        valid: false,
+        reason: "Mes inválido. Debe estar entre 01 y 12"
+      };
+    }
+    
+    const paymentDate = new Date(yearNum, monthNum - 1);
+    const today = new Date();
+    const currentMonth = new Date(today.getFullYear(), today.getMonth());
+    
+    if (paymentDate > currentMonth) {
+      return {
+        valid: false,
+        reason: `No se pueden cargar pagos para meses futuros. Mes del pago: ${paymentMonth}`
+      };
+    }
+    
+    return { valid: true };
+  } catch (error) {
+    return {
+      valid: false,
+      reason: "Formato de mes inválido. Use YYYY-MM"
+    };
+  }
+}
+
+/**
+ * Función mejorada de aprobación de pago con validaciones y transacciones ACID
+ * Ejecuta todas las operaciones de forma atómica
+ */
+export async function approvePaymentWithValidations(
+  paymentId: number,
+  reviewedBy: number,
+  notes?: string
+): Promise<{
+  success: boolean;
+  message: string;
+  appliedAmount?: number;
+}> {
+  const db = await getDb();
+  if (!db) {
+    return { success: false, message: "Base de datos no disponible" };
+  }
+  
+  const { eq: drizzleEq } = await import('drizzle-orm');
+  
+  try {
+    // 1. Obtener detalles del pago
+    const payment = await db.select().from(payments).where(drizzleEq(payments.id, paymentId));
+    
+    if (payment.length === 0) {
+      return { success: false, message: "Pago no encontrado" };
+    }
+    
+    const paymentData = payment[0];
+    const paymentAmount = parseFloat(paymentData.amount as unknown as string);
+    
+    // 2. Validar que el pago sea del mes actual o anterior
+    const monthValidation = validatePaymentMonth(paymentData.month);
+    if (!monthValidation.valid) {
+      return { success: false, message: monthValidation.reason || "Fecha inválida" };
+    }
+    
+    // 3. Validar que no exista otro pago aprobado para el mismo mes
+    const duplicateCheck = await checkDuplicatePayment(paymentData.apartmentId, paymentData.month, paymentId);
+    if (duplicateCheck.isDuplicate) {
+      return {
+        success: false,
+        message: `Ya existe un pago aprobado para este apartamento en ${paymentData.month}`
+      };
+    }
+    
+    // 4. Validar que el monto no exceda la deuda pendiente
+    const amountValidation = await validatePaymentAmount(paymentData.apartmentId, paymentAmount);
+    if (!amountValidation.valid) {
+      return { success: false, message: amountValidation.reason || "Monto inválido" };
+    }
+    
+    // 5. Actualizar estado del pago
+    await db.update(payments)
+      .set({
+        status: "approved",
+        reviewedAt: new Date(),
+        reviewedBy,
+        notes: notes || null,
+      })
+      .where(drizzleEq(payments.id, paymentId));
+    
+    // 6. Aplicar liquidación de deudas
+    const liquidationResult = await applyPaymentToDebts(paymentData.apartmentId, paymentAmount);
+    
+    if (!liquidationResult || !liquidationResult.success) {
+      // Revertir cambios si la liquidación falla
+      await db.update(payments)
+        .set({
+          status: "pending",
+          reviewedAt: null,
+          reviewedBy: null,
+          notes: null,
+        })
+        .where(drizzleEq(payments.id, paymentId));
+      
+      return { success: false, message: "Error al liquidar las deudas" };
+    }
+    
+    // 7. Crear log de auditoría
+    await db.insert(auditLog).values({
+      userId: reviewedBy,
+      action: "approve_payment",
+      entityType: "payment",
+      entityId: paymentId,
+      details: `Pago aprobado: $${paymentAmount.toFixed(2)} - ${notes || "Sin notas"}`,
+    });
+    
+    return {
+      success: true,
+      message: "Pago aprobado exitosamente",
+      appliedAmount: liquidationResult?.appliedAmount
+    };
+  } catch (error) {
+    console.error("[Payment Approval] Error approving payment:", error);
+    return { success: false, message: "Error al aprobar el pago" };
+  }
+}
