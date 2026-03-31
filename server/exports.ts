@@ -24,74 +24,105 @@ export interface PaymentStatusData {
 export async function generatePDF(data: PaymentStatusData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument();
+      const doc = new PDFDocument({ margin: 40 });
       const chunks: Buffer[] = [];
 
       doc.on("data", (chunk: Buffer) => chunks.push(chunk));
       doc.on("end", () => resolve(Buffer.concat(chunks)));
       doc.on("error", reject);
 
-      // Encabezado
-      doc.fontSize(20).font("Helvetica-Bold").text(data.condominiumName, { align: "center" });
-      doc.fontSize(12).font("Helvetica").text("Estado de Pagos por Apartamento", { align: "center" });
-      doc.fontSize(10).text(`Mes: ${data.month}`, { align: "center" });
-      doc.moveDown();
+      const pageHeight = doc.page.height;
+      const pageWidth = doc.page.width;
+      const margin = 40;
+      const contentWidth = pageWidth - 2 * margin;
 
-      // Resumen
-      doc.fontSize(12).font("Helvetica-Bold").text("Resumen:");
-      doc.fontSize(10).font("Helvetica");
+      // Función para agregar encabezado en cada página
+      const addHeader = () => {
+        doc.fontSize(16).font("Helvetica-Bold").text(data.condominiumName, { align: "center" });
+        doc.fontSize(11).font("Helvetica").text("Estado de Pagos por Apartamento", { align: "center" });
+        doc.fontSize(9).text(`Mes: ${data.month}`, { align: "center" });
+        doc.moveDown(0.5);
+      };
+
+      // Primera página con encabezado y resumen
+      addHeader();
+
+      doc.fontSize(10).font("Helvetica-Bold").text("Resumen:");
+      doc.fontSize(9).font("Helvetica");
       doc.text(`Total de Apartamentos: ${data.summary.total}`);
       doc.text(`Pagados: ${data.summary.paid}`);
       doc.text(`Pendientes: ${data.summary.pending}`);
       doc.text(`Total Adeudado: $${data.summary.totalDue.toFixed(2)}`);
       doc.text(`Total Pendiente: $${data.summary.totalPending.toFixed(2)}`);
-      doc.moveDown();
+      doc.moveDown(0.5);
 
       // Tabla de apartamentos
-      doc.fontSize(11).font("Helvetica-Bold").text("Detalle de Apartamentos:");
+      doc.fontSize(10).font("Helvetica-Bold").text("Detalle de Apartamentos:");
       doc.moveDown(0.3);
 
-      // Encabezados de tabla
-      const startX = 50;
-      const startY = doc.y;
-      const colWidths = [100, 100, 100, 100];
-      const headers = ["Apartamento", "Deuda Total", "Pendiente", "Estado"];
+      // Configuración de tabla
+      const colWidths = [80, 90, 90, 90];
+      const rowHeight = 20;
+      const headerHeight = 20;
+      let currentY = doc.y;
 
-      let x = startX;
-      headers.forEach((header, i) => {
-        doc.fontSize(9).font("Helvetica-Bold").text(header, x, startY, { width: colWidths[i] });
-        x += colWidths[i];
-      });
-
-      doc.moveTo(startX, startY + 15).lineTo(startX + 400, startY + 15).stroke();
-      doc.moveDown(1.2);
-
-      // Filas de datos
-      doc.fontSize(9).font("Helvetica");
-      data.debts.forEach((debt) => {
+      // Función para dibujar encabezados de tabla
+      const drawTableHeader = () => {
+        const headers = ["Apartamento", "Deuda Total", "Pendiente", "Estado"];
+        let x = margin;
         const y = doc.y;
-        x = startX;
 
-        doc.text(debt.apartmentName, x, y, { width: colWidths[0] });
+        doc.fontSize(8).font("Helvetica-Bold");
+        headers.forEach((header, i) => {
+          doc.text(header, x, y, { width: colWidths[i], align: "left" });
+          x += colWidths[i];
+        });
+
+        doc.moveTo(margin, y + headerHeight - 5)
+          .lineTo(pageWidth - margin, y + headerHeight - 5)
+          .stroke();
+
+        doc.moveDown(1.2);
+      };
+
+      // Dibujar primer encabezado de tabla
+      drawTableHeader();
+
+      // Dibujar filas de datos
+      doc.fontSize(8).font("Helvetica");
+      data.debts.forEach((debt, index) => {
+        // Verificar si necesitamos una nueva página
+        if (doc.y + rowHeight > pageHeight - margin - 30) {
+          doc.addPage();
+          addHeader();
+          doc.moveDown(0.3);
+          drawTableHeader();
+        }
+
+        let x = margin;
+        const y = doc.y;
+
+        // Dibujar cada celda
+        doc.text(debt.apartmentName, x, y, { width: colWidths[0], align: "left" });
         x += colWidths[0];
 
-        doc.text(`$${parseFloat(debt.totalDue).toFixed(2)}`, x, y, { width: colWidths[1] });
+        doc.text(`$${parseFloat(debt.totalDue).toFixed(2)}`, x, y, { width: colWidths[1], align: "right" });
         x += colWidths[1];
 
-        doc.text(`$${parseFloat(debt.pendingAmount).toFixed(2)}`, x, y, { width: colWidths[2] });
+        doc.text(`$${parseFloat(debt.pendingAmount).toFixed(2)}`, x, y, { width: colWidths[2], align: "right" });
         x += colWidths[2];
 
         const status = debt.isPaid ? "Pagado" : "Pendiente";
-        doc.text(status, x, y, { width: colWidths[3] });
+        doc.text(status, x, y, { width: colWidths[3], align: "left" });
 
-        doc.moveDown(0.8);
+        doc.moveDown(1);
       });
 
       // Pie de página
       doc.moveDown();
-      doc.fontSize(8).font("Helvetica").text(
+      doc.fontSize(7).font("Helvetica").text(
         `Generado: ${new Date().toLocaleString("es-ES")}`,
-        { align: "center" }
+        { align: "right" }
       );
 
       doc.end();
