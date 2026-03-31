@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -123,6 +124,8 @@ function DashboardLayoutContent({
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const { data: apartments } = trpc.apartments.list.useQuery();
+  const apartment = apartments?.find(apt => apt.id === user?.apartmentId);
 
   const menuItems = user?.role === "admin" ? adminMenuItems : userMenuItems;
   const activeMenuItem = menuItems.find(item => item.path === location);
@@ -229,6 +232,11 @@ function DashboardLayoutContent({
                     <p className="text-xs text-muted-foreground truncate mt-1.5">
                       {user?.email || "-"}
                     </p>
+                    {user?.role === "user" && user?.apartmentId && apartment && (
+                      <p className="text-xs text-muted-foreground truncate mt-1">
+                        Apto: {apartment.unitName || apartment.apartmentNumber}
+                      </p>
+                    )}
                   </div>
                 </button>
               </DropdownMenuTrigger>
