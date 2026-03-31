@@ -192,3 +192,20 @@
 - [x] Crear pruebas unitarias en phase1.validations.test.ts
 - [ ] Verificar funcionamiento en navegador
 - [ ] Crear checkpoint de Fase 1
+
+
+## PLAN UNIFICADO - FASE 2: Mejoras de UX - Tablas Avanzadas
+
+- [x] Crear componente reutilizable de tabla avanzada (AdvancedTable.tsx)
+- [x] Agregar búsqueda por texto en tablas
+- [x] Implementar filtros por estado y mes/fecha
+- [x] Implementar ordenamiento por columnas
+- [x] Agregar paginación inteligente
+- [x] Mejorar UI de tablas con indicadores visuales
+- [x] Actualizar PaymentReview.tsx con búsqueda y filtros
+- [x] Agregar vista de tabla y vista de tarjetas
+- [x] Agregar panel de detalles del pago seleccionado
+- [x] Compilación sin errores
+- [x] Pruebas unitarias pasando
+- [x] Verificar funcionamiento en navegador
+- [ ] Crear checkpoint de Fase 2
