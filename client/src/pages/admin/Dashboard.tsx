@@ -195,7 +195,7 @@ export default function AdminDashboard() {
               })
               .map((debt) => (
               <div
-                key={debt.id}
+                key={debt.apartmentId}
                 className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
                 onClick={() => setPaymentModal({
                   open: true,
