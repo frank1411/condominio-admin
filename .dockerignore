@@ -1,0 +1,74 @@
+# Dependencias
+node_modules
+.pnpm-store
+
+# Archivos de entorno
+.env
+.env.local
+.env.*.local
+
+# Archivos de build
+dist
+build
+
+# Archivos de desarrollo
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Archivos de git
+.git
+.gitignore
+.gitattributes
+
+# Archivos de logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Archivos de prueba
+coverage
+.nyc_output
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__
+__mocks__
+
+# Archivos temporales
+.tmp
+.temp
+.cache
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de documentación
+README.md
+DEPLOYMENT.md
+TODO.md
+CLAUDE.md
+
+# Archivos de configuración de desarrollo
+.eslintrc
+.prettierrc
+.prettierignore
+
+# Archivos de drizzle
+drizzle/meta/*.json
+!drizzle/meta/_journal.json
+
+# Archivos de manus
+.manus
+.manus-logs
+
+# Otros
+patches
+attached_assets
