@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, desc, isNull, asc, sql } from "drizzle-orm";
+import { eq, and, gte, lte, desc, isNull, asc, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { TRPCError } from "@trpc/server";
@@ -662,41 +662,55 @@ export async function generateDebtsFromCharge(chargeId: number) {
     } else {
       // Si es cobro global, generar deuda para todos los apartamentos
       const allApartments = await db.select().from(apartments);
-      for (const apt of allApartments) {
-        const existingDebt = await db
-          .select()
-          .from(monthlyDebts)
-          .where(
-            and(
-              eq(monthlyDebts.apartmentId, apt.id),
-              eq(monthlyDebts.month, month)
-            )
-          )
-          .limit(1);
 
-        if (existingDebt && existingDebt.length > 0) {
+      if (allApartments.length === 0) return;
+
+      // Batch SELECT: traer todas las deudas existentes del mes en 1 query
+      const apartmentIds = allApartments.map(a => a.id);
+      const existingDebts = await db
+        .select()
+        .from(monthlyDebts)
+        .where(
+          and(
+            eq(monthlyDebts.month, month),
+            inArray(monthlyDebts.apartmentId, apartmentIds)
+          )
+        );
+
+      // Map rápido: apartmentId → deuda existente
+      const debtMap = new Map(existingDebts.map(d => [d.apartmentId, d]));
+
+      // Separar: los que ya tienen deuda (UPDATE) vs los nuevos (bulk INSERT)
+      const toInsert: (typeof monthlyDebts.$inferInsert)[] = [];
+
+      for (const apt of allApartments) {
+        const existing = debtMap.get(apt.id);
+        if (existing) {
           // Actualizar deuda existente: sumar el nuevo cobro
-          const debt = existingDebt[0];
-          const totalDue = parseFloat(debt.totalDue as unknown as string) + chargeAmount;
-          const pendingAmount = parseFloat(debt.pendingAmount as unknown as string) + chargeAmount;
+          const totalDue = parseFloat(existing.totalDue as unknown as string) + chargeAmount;
+          const pendingAmount = parseFloat(existing.pendingAmount as unknown as string) + chargeAmount;
 
           await db.update(monthlyDebts)
             .set({
               totalDue: totalDue.toString(),
               pendingAmount: pendingAmount.toString(),
             })
-            .where(eq(monthlyDebts.id, debt.id));
+            .where(eq(monthlyDebts.id, existing.id));
         } else {
-          // Crear nueva deuda
-          await db.insert(monthlyDebts).values({
+          toInsert.push({
             apartmentId: apt.id,
-            chargeId: chargeId,
+            chargeId,
             month,
             totalDue: chargeAmount.toString(),
             pendingAmount: chargeAmount.toString(),
             isPaid: false,
           });
         }
+      }
+
+      // Bulk INSERT: todas las deudas nuevas en 1 sola query
+      if (toInsert.length > 0) {
+        await db.insert(monthlyDebts).values(toInsert);
       }
     }
 
