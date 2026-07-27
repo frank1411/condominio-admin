@@ -142,38 +142,48 @@ curl -s 'https://condominio-admin-eta.vercel.app/api/trpc/system.health?input=%7
 
 Basado en auditoría integral: revisión manual + CODE_REVIEW.md (calidad) + PERFORMANCE_REVIEW.md (rendimiento) + SECURITY_REVIEW.md (seguridad). 55 hallazgos consolidados en 30 acciones priorizadas.
 
-| Orden | Prioridad | Tarea | Esfuerzo | Reporte |
-|-------|-----------|-------|----------|---------|
-| 1 | 🔴 | **CR-01 — Unificar env var**: `SUPABASE_SERVICE_ROLE_KEY` → `SUPABASE_SERVICE_KEY` en `env.ts` y `supabase.ts` | 5 min | Seguridad |
-| 2 | 🔴 | **CR-02 — CSRF**: Cambiar `sameSite: "none"` → `"lax"` en `cookies.ts`; eliminar `express.urlencoded()` | 5 min | Seguridad |
-| 3 | 🔴 | **CR-03 — Storage path traversal**: Sanitizar `normalizeKey()` vs `../`; validar MIME real del archivo | 15 min | Seguridad |
-| 4 | 🔴 | **CR-04 — Fijar versión Zod**: `package.json` declara `^4.1.12` pero código usa sintaxis v3 | 2 min | Calidad |
-| 5 | 🔴 | **CR-05 — Dynamic imports redundantes**: Eliminar ~25 imports dinámicos de `drizzle-orm` en `db.ts` | 15 min | Calidad |
-| 6 | 🔴 | **CR-06 — staleTime en React Query**: Configurar `staleTime: 30_000` y `gcTime: 300_000` en `main.tsx` | 5 min | Rendimiento |
-| 7 | 🔴 | **CR-07 — Índices compuestos en BD**: Agregar índices en `monthlyDebts.month`, `payments.status`, `users.email`, etc. | 30 min | Rendimiento |
-| 8 | 🟠 | **AL-01 — IDOR payments.byApartment**: Validar `ctx.user.role === "admin" \|\| ctx.user.apartmentId === input.apartmentId` | 10 min | Seguridad |
-| 9 | 🟠 | **AL-02 — Reducir body parser**: Bajar `limit: "50mb"` a `"10mb"` o `"1mb"` según endpoint | 5 min | Seguridad |
-| 10 | 🟠 | **AL-03 — Helmet + rate limiting**: Agregar `helmet` y `express-rate-limit` al servidor Express | 30 min | Seguridad |
-| 11 | 🟠 | **AL-04 — ErrorBoundary sin stack en prod**: Solo mostrar stack trace en `NODE_ENV=development` | 5 min | Seguridad |
-| 12 | 🟠 | **AL-05 — Auth me DTO público**: No exponer `approvedBy`, `rejectionReason`, `openId` en `auth.me` | 15 min | Seguridad |
-| 13 | 🟠 | **AL-06 — Transacciones ACID reales**: Usar `db.transaction()` con `SELECT ... FOR UPDATE` en `approvePaymentWithValidations` | 1h | Rendimiento |
-| 14 | 🟠 | **AL-07 — N+1 queries batch**: Reemplazar loop por `INSERT ... ON CONFLICT` en `generateDebtsFromCharge` | 1h | Rendimiento |
-| 15 | 🟠 | **AL-08 — Pool de conexiones**: Usar `postgres` pool con `max: 5-10` en vez de conexión directa | 30 min | Rendimiento |
-| 16 | 🟠 | **AL-09 — Eliminar duplicación de cálculos**: Extraer `getDebtsSummary(month, sortBy)` compartida para 4 endpoints | 2h | Calidad |
-| 17 | 🟠 | **AL-10 — Auditoría a middleware tRPC**: Mover `createAuditLog` a middleware global | 1h | Calidad |
-| 18 | 🟠 | **AL-11 — httpBatchLink limit**: Configurar `maxURLLength` en tRPC client | 10 min | Calidad |
-| 19 | 🟡 | **ME-01 — Presigned URLs para uploads**: Migrar de base64 a upload directo a Supabase Storage | 2-3h | Calidad |
-| 20 | 🟡 | **ME-02 — Lazy loading frontend**: `React.lazy()` + `<Suspense>` para rutas admin/user | 1h | Rendimiento |
-| 21 | 🟡 | **ME-03 — Helmet CSP configurado**: CSP restringido para prevenir XSS | 30 min | Seguridad |
-| 22 | 🟡 | **ME-04 — Token JWT a httpOnly cookie**: Migrar de localStorage a cookie segura | 2h | Seguridad |
-| 23 | 🟡 | **ME-05 — Refactor db.ts en módulos**: Separar God Object 1725 líneas en `db/users.ts`, `db/payments.ts`, `db/debts.ts`, etc. | 4-6h | Calidad |
-| 24 | 🟡 | **ME-06 — Sidebar debounce**: Evitar ~60 writes/s a localStorage en resize | 15 min | Calidad |
-| 25 | 🟡 | **ME-07 — Drizzle relations**: Completar `relations.ts` con relaciones entre tablas | 30 min | Calidad |
-| 26 | 🟡 | **ME-08 — Tests de integración**: Flujo completo: cobro → deuda → pago → liquidación | 3h | Calidad |
-| 27 | 🔵 | **BA-01 — Limpiar `.manus/`**: `git rm -r .manus/` y agregar a `.gitignore` | 5 min | Calidad |
-| 28 | 🔵 | **BA-02 — `.env.example`**: Documentar todas las variables de entorno | 15 min | Calidad |
-| 29 | 🔵 | **BA-03 — Logger estructurado**: Agregar `pino` o `winston` en vez de `console.log/warn/error` | 30 min | Calidad |
-| 30 | 🔵 | **BA-04 — Eliminar `@ts-ignore` y `as any`**: Tipado estricto con tipos Drizzle | 2h | Calidad |
+# Fase 1 — Críticas (7/7 Completadas ✅)
+
+1. ✅ **CR-01** — Unificar `SUPABASE_SERVICE_ROLE_KEY` → `SUPABASE_SERVICE_KEY` (5 min)
+2. ✅ **CR-02** — CSRF: `sameSite: "lax"` + eliminar `urlencoded` (5 min)
+3. ✅ **CR-03** — Storage path traversal sanitization (15 min)
+4. ✅ **CR-04** — Pin Zod `^3.24.1` (2 min)
+5. ✅ **CR-05** — Eliminar 7 dynamic imports de `drizzle-orm` (15 min)
+6. ✅ **CR-06** — `staleTime: 30_000` + `gcTime: 300_000` en React Query + fix Auth header (5 min)
+7. ✅ **CR-07** — 9 índices compuestos en BD (30 min)
+
+# Fase 2 — Altas (🟠)
+
+| # | Tarea | Esfuerzo | Reporte | Personalidad |
+|---|-------|----------|---------|-------------|
+| 8 | **AL-01 — IDOR payments.byApartment**: Validar `ctx.user.role === "admin" \|\| ctx.user.apartmentId === input.apartmentId` | 10 min | Seguridad | 🛡️ security |
+| 9 | **AL-02 — Reducir body parser**: Bajar `limit: "50mb"` a `"10mb"` o `"1mb"` según endpoint | 5 min | Seguridad | 🛡️ security |
+| 10 | **AL-03 — Helmet + rate limiting**: Agregar `helmet` y `express-rate-limit` al servidor Express | 30 min | Seguridad | 🛡️ security |
+| 11 | **AL-04 — ErrorBoundary sin stack en prod**: Solo mostrar stack trace en `NODE_ENV=development` | 5 min | Seguridad | 🛡️ security |
+| 12 | **AL-05 — Auth me DTO público**: No exponer `approvedBy`, `rejectionReason`, `openId` en `auth.me` | 15 min | Seguridad | 🏗️ architect |
+| 13 | **AL-06 — Transacciones ACID reales**: Usar `db.transaction()` con `SELECT ... FOR UPDATE` en `approvePaymentWithValidations` | 1h | Rendimiento | 🗄️ DBA |
+| 14 | **AL-07 — N+1 queries batch**: Reemplazar loop por `INSERT ... ON CONFLICT` en `generateDebtsFromCharge` | 1h | Rendimiento | 🗄️ DBA |
+| 15 | **AL-08 — Pool de conexiones**: Usar `postgres` pool con `max: 5-10` en vez de conexión directa | 30 min | Rendimiento | 🔧 devops |
+| 16 | **AL-09 — Eliminar duplicación de cálculos**: Extraer `getDebtsSummary(month, sortBy)` compartida para 4 endpoints | 2h | Calidad | 🔧 refactoring |
+| 17 | **AL-10 — Auditoría a middleware tRPC**: Mover `createAuditLog` a middleware global | 1h | Calidad | 🏗️ architect |
+| 18 | **AL-11 — httpBatchLink limit**: Configurar `maxURLLength` en tRPC client | 10 min | Calidad | 🔧 refactoring |
+
+# Fase 3 — Medias y Bajas (🟡 🔵)
+
+| # | Tarea | Esfuerzo | Reporte | Personalidad |
+|---|-------|----------|---------|-------------|
+| 19 | **ME-01 — Presigned URLs para uploads**: Migrar de base64 a upload directo a Supabase Storage | 2-3h | Calidad | 🏗️ architect |
+| 20 | **ME-02 — Lazy loading frontend**: `React.lazy()` + `<Suspense>` para rutas admin/user | 1h | Rendimiento | 🏗️ architect |
+| 21 | **ME-03 — Helmet CSP configurado**: CSP restringido para prevenir XSS | 30 min | Seguridad | 🛡️ security |
+| 22 | **ME-04 — Token JWT a httpOnly cookie**: Migrar de localStorage a cookie segura | 2h | Seguridad | 🛡️ security |
+| 23 | **ME-05 — Refactor db.ts en módulos**: Separar God Object 1725 líneas en `db/users.ts`, `db/payments.ts`, `db/debts.ts`, etc. | 4-6h | Calidad | 🔧 refactoring |
+| 24 | **ME-06 — Sidebar debounce**: Evitar ~60 writes/s a localStorage en resize | 15 min | Calidad | 🔧 refactoring |
+| 25 | **ME-07 — Drizzle relations**: Completar `relations.ts` con relaciones entre tablas | 30 min | Calidad | 🏗️ architect |
+| 26 | **ME-08 — Tests de integración**: Flujo completo: cobro → deuda → pago → liquidación | 3h | Calidad | 🏗️ architect |
+| 27 | **BA-01 — Limpiar `.manus/`**: `git rm -r .manus/` y agregar a `.gitignore` | 5 min | Calidad | 🔧 refactoring |
+| 28 | **BA-02 — `.env.example`**: Documentar todas las variables de entorno | 15 min | Calidad | 🔧 refactoring |
+| 29 | **BA-03 — Logger estructurado**: Agregar `pino` o `winston` en vez de `console.log/warn/error` | 30 min | Calidad | 🔧 refactoring |
+| 30 | **BA-04 — Eliminar `@ts-ignore` y `as any`**: Tipado estricto con tipos Drizzle | 2h | Calidad | 🔧 refactoring |
 
 ### Reportes de auditoría generados
 
