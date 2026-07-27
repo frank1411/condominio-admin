@@ -610,7 +610,41 @@ Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7 → Tas
 
 Cada tarea es autocontenida y commiteable. No avanzar a la siguiente sin verificar que la anterior compila.
 
-💚 **Estado de ejecución:** Tasks 1-9 completadas. Tasks 10-13 pendientes para deploy.
+💚 **Estado de ejecución:** Tasks 1-13 completadas. Deploy exitoso en producción.
+
+---
+## Resumen del Deploy (Tasks 10-13)
+
+### Task 10: Proyecto Supabase
+- ✅ Proyecto `pvtcpuboyjibltcyyzqe` creado (sa-east-1, plan free)
+- ✅ Auth: email/password habilitado
+- ✅ Storage: bucket `vouchers` creado
+- ✅ DB: pooler IPv4 configurado (puerto 6543, PgBouncer)
+
+### Task 11: Deploy Vercel
+- ✅ Repositorio vinculado, hecho público para auto-deploy
+- ✅ Env vars configuradas: DATABASE_URL, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_KEY, ADMIN_OPEN_ID, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+- ✅ Bundle esbuild autocontenido (`api/index.js` 77.6KB, ESM)
+- ✅ URL: `https://condominio-admin-eta.vercel.app/`
+
+### Problemas superados en deploy Vercel
+| Problema | Solución |
+|---|---|
+| IPv6-only no resuelve DNS | Usar pooler IPv4 (puerto 6543) |
+| `sb_secret_...` no funciona | Usar `service_role (legacy)` JWT (`eyJ...`) |
+| Import TS fuera de `api/` no resuelto por @vercel/node | Bundle con esbuild (`--packages=external`) |
+| `dotenv` usa `require("fs")` → incompatible con ESM | Remover `dotenv` del entry point |
+| CJS vs ESM conflict (`"type": "module"`) | Usar `--format=esm` para el bundle |
+
+### Task 12: Migraciones DB
+- ✅ `pnpm db:push` ejecutado contra Supabase PostgreSQL
+- ✅ Tablas creadas: users, payments, charges, apartments, requests, etc.
+
+### Task 13: Pruebas post-deploy
+- ✅ Frontend HTTP 200 (SPA React)
+- ✅ API tRPC responde (`system.health` encontrado en el router)
+- ✅ DB conectada (verificado con Node local)
+- 🟡 Pendiente: probar flujo completo de login y subida de vouchers en producción
 
 ---
 
