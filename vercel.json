@@ -4,7 +4,6 @@
   "outputDirectory": "dist/public",
   "installCommand": "pnpm install",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "env": {
