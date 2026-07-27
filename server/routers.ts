@@ -7,6 +7,7 @@ import { TRPCError } from "@trpc/server";
 import * as db from "./db";
 import { generatePDF, generateExcel } from "./exports";
 import { verifySupabaseToken } from "./_core/supabase";
+import { createPresignedUploadUrl, createPresignedDownloadUrl, deleteFile } from "./_core/storage";
 
 // Procedimiento solo para administradores
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -925,6 +926,36 @@ export const appRouter = router({
         });
         
         return { buffer: excelBuffer.toString('base64'), filename: `Estado-Pagos-${month}.xlsx` };
+      }),
+  }),
+
+  // ===== STORAGE (PRESIGNED URLS) =====
+  storage: router({
+    generateUploadUrl: protectedProcedure
+      .input(z.object({
+        filePath: z.string().min(1).max(255),
+        expiresIn: z.number().min(60).max(86400).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return createPresignedUploadUrl(input.filePath, input.expiresIn);
+      }),
+
+    generateDownloadUrl: protectedProcedure
+      .input(z.object({
+        filePath: z.string().min(1).max(255),
+        expiresIn: z.number().min(60).max(86400).optional(),
+      }))
+      .query(async ({ input }) => {
+        return createPresignedDownloadUrl(input.filePath, input.expiresIn);
+      }),
+
+    delete: adminProcedure
+      .input(z.object({
+        filePath: z.string().min(1).max(255),
+      }))
+      .mutation(async ({ input }) => {
+        await deleteFile(input.filePath);
+        return { success: true } as const;
       }),
   }),
 });
