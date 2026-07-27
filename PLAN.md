@@ -138,56 +138,47 @@ curl -s 'https://condominio-admin-eta.vercel.app/api/trpc/system.health?input=%7
 
 ---
 
-## Mejoras Prioritarias (Auditoría Julio 2026)
+## Plan de Acción Sugerido (Auditoría Julio 2026)
 
-Basado en auditoría integral del código (revisión manual + CODE_REVIEW.md + PERFORMANCE_REVIEW.md).
+Basado en auditoría integral: revisión manual + CODE_REVIEW.md (calidad) + PERFORMANCE_REVIEW.md (rendimiento) + SECURITY_REVIEW.md (seguridad). 55 hallazgos consolidados en 30 acciones priorizadas.
 
-### 🔴 Críticas — Corregir esta semana
-
-| # | Prioridad | Problema | Impacto | Solución |
-|---|-----------|----------|---------|----------|
-| C1 | 🔴 | `env.ts` usa `SUPABASE_SERVICE_ROLE_KEY` pero Vercel usa `SUPABASE_SERVICE_KEY` | Admin client (`supabaseAdmin`) nunca se inicializa en producción → storage y auth rotos | Unificar a `SUPABASE_SERVICE_KEY` |
-| C2 | 🔴 | `server/db.ts` = 1725 líneas God Object | Imposible testear, mantener, o extender sin romper algo | Dividir en `server/db/users.ts`, `payments.ts`, `debts.ts`, `notifications.ts`, `reports.ts` + capa servicios `server/services/` |
-| C3 | 🔴 | Cálculo de deudas duplicado en 4 endpoints (`debts.dashboard`, `paymentStatusExport`, `downloadPDF`, `downloadExcel`) | Bugs por inconsistencia; cambiar lógica en un lugar no actualiza los otros | Extraer a función compartida `getDebtsSummary(month, sortBy)` |
-| C4 | 🔴 | Transacciones "ACID" sin `BEGIN`/`COMMIT`/`ROLLBACK` | Inconsistencia de datos bajo concurrencia o timeout serverless | Usar `db.transaction()` de Drizzle con `SELECT ... FOR UPDATE` |
-| C5 | 🔴 | ~25 dynamic imports redundantes de `drizzle-orm` en `db.ts` | Latencia innecesaria en cada llamada; ya importados al inicio del archivo | Eliminar imports dinámicos, usar estáticos |
-| C6 | 🔴 | Sin índices en BD (solo 1 unique en 10 tablas) | Sequential scans en cada query; no escala con crecimiento | Agregar índices compuestos en `monthlyDebts.month`, `payments.status`, `users.email`, etc. |
-| C7 | 🔴 | Sin `staleTime` en React Query (`staleTime: 0` por defecto) | Cada navegación dispara llamadas API nuevas; cold starts desperdiciados | Configurar `staleTime: 30_000` y `gcTime: 300_000` por defecto en `main.tsx` |
-
-### 🟠 Altas — Corregir este mes
-
-| # | Problema | Solución |
-|---|----------|----------|
-| A1 | Body parser `50mb` sin límite (DOS vector) | Reducir a 10MB/1MB según endpoint |
-| A2 | `sameSite: "none"` innecesario | Cambiar a `"lax"` |
-| A3 | Token JWT en localStorage (vulnerable a XSS) | Migrar a httpOnly cookie vía `supabase-js` |
-| A4 | Auth `me` expone datos internos (`approvedBy`, `rejectionReason`, etc.) | Crear DTO de usuario público |
-| A5 | Sin Helmet.js ni headers de seguridad | Agregar `helmet` middleware |
-| A6 | Sin rate limiting en ningún endpoint | Agregar `express-rate-limit` |
-| A7 | N+1 queries en `generateDebtsFromCharge` (1 query por apto) | `INSERT ... ON CONFLICT` batch con una sola query |
-| A8 | PDF/Excel como base64 por tRPC query (sin streaming, 2x-3x overhead RAM) | Migrar a descarga directa Express o Presigned URL |
-| A9 | Sin pool de conexiones (conexión directa `postgres` en serverless) | Usar `postgres` pool con `max` configurable y cierre graceful |
-| A10 | Zod v4 declarado en package.json (`^4.1.12`) pero sintaxis v3 en todo el código | Fijar versión `zod@3.24.1` o migrar a sintaxis v4 |
-| A11 | Auditoría manual repetida en cada mutation (20+ veces) | Mover a middleware global de tRPC |
-| A12 | `httpBatchLink` sin límite de batch | Configurar `maxURLLength` o limitar por request |
-
-### 🟡 Medias — Próximo trimestre
-
-| # | Problema | Solución |
-|---|----------|----------|
-| M1 | Base64 para uploads de vouchers (infla payload 33%) | Presigned URLs de Supabase Storage + upload directo frontend |
-| M2 | Sin lazy loading en frontend (bundle único de 818KB) | `React.lazy()` + `<Suspense>` para rutas admin/user |
-| M3 | Sidebar width persistido sin debounce (~60 writes/s en resize) | `lodash.debounce` o `requestAnimationFrame` |
-| M4 | `shared/const.ts` infrautilizado (solo 5 líneas) | Mover constantes hardcodeadas (colores, estados, tipos) |
-| M5 | Sin `.env.example` ni logger estructurado | Crear `.env.example`, agregar `pino` o `winston` |
-| M6 | Relaciones Drizzle vacías (`relations.ts`) | Definir relaciones entre tablas para queries `.with()` |
-| M7 | `any`/`as any` casts en 20+ lugares | Tipado estricto con tipos de Drizzle |
-| M8 | Eliminación en cascada manual sin CASCADE ni transacción | Usar `onDelete: 'cascade'` de Drizzle o transacción |
-| M9 | Sin tests de integración (solo unitarios) | Agregar tests de flujo completo (crear cobro → pagar → liquidar) |
-| M10 | Carpeta `.manus/` con archivos de caché en el repo | `git rm -r .manus/` y agregar a `.gitignore` |
-| M11 | `as unknown as string` repetido 15+ veces en `db.ts` | Tipar correctamente o usar `zod` para parseo |
+| Orden | Prioridad | Tarea | Esfuerzo | Reporte |
+|-------|-----------|-------|----------|---------|
+| 1 | 🔴 | **CR-01 — Unificar env var**: `SUPABASE_SERVICE_ROLE_KEY` → `SUPABASE_SERVICE_KEY` en `env.ts` y `supabase.ts` | 5 min | Seguridad |
+| 2 | 🔴 | **CR-02 — CSRF**: Cambiar `sameSite: "none"` → `"lax"` en `cookies.ts`; eliminar `express.urlencoded()` | 5 min | Seguridad |
+| 3 | 🔴 | **CR-03 — Storage path traversal**: Sanitizar `normalizeKey()` vs `../`; validar MIME real del archivo | 15 min | Seguridad |
+| 4 | 🔴 | **CR-04 — Fijar versión Zod**: `package.json` declara `^4.1.12` pero código usa sintaxis v3 | 2 min | Calidad |
+| 5 | 🔴 | **CR-05 — Dynamic imports redundantes**: Eliminar ~25 imports dinámicos de `drizzle-orm` en `db.ts` | 15 min | Calidad |
+| 6 | 🔴 | **CR-06 — staleTime en React Query**: Configurar `staleTime: 30_000` y `gcTime: 300_000` en `main.tsx` | 5 min | Rendimiento |
+| 7 | 🔴 | **CR-07 — Índices compuestos en BD**: Agregar índices en `monthlyDebts.month`, `payments.status`, `users.email`, etc. | 30 min | Rendimiento |
+| 8 | 🟠 | **AL-01 — IDOR payments.byApartment**: Validar `ctx.user.role === "admin" \|\| ctx.user.apartmentId === input.apartmentId` | 10 min | Seguridad |
+| 9 | 🟠 | **AL-02 — Reducir body parser**: Bajar `limit: "50mb"` a `"10mb"` o `"1mb"` según endpoint | 5 min | Seguridad |
+| 10 | 🟠 | **AL-03 — Helmet + rate limiting**: Agregar `helmet` y `express-rate-limit` al servidor Express | 30 min | Seguridad |
+| 11 | 🟠 | **AL-04 — ErrorBoundary sin stack en prod**: Solo mostrar stack trace en `NODE_ENV=development` | 5 min | Seguridad |
+| 12 | 🟠 | **AL-05 — Auth me DTO público**: No exponer `approvedBy`, `rejectionReason`, `openId` en `auth.me` | 15 min | Seguridad |
+| 13 | 🟠 | **AL-06 — Transacciones ACID reales**: Usar `db.transaction()` con `SELECT ... FOR UPDATE` en `approvePaymentWithValidations` | 1h | Rendimiento |
+| 14 | 🟠 | **AL-07 — N+1 queries batch**: Reemplazar loop por `INSERT ... ON CONFLICT` en `generateDebtsFromCharge` | 1h | Rendimiento |
+| 15 | 🟠 | **AL-08 — Pool de conexiones**: Usar `postgres` pool con `max: 5-10` en vez de conexión directa | 30 min | Rendimiento |
+| 16 | 🟠 | **AL-09 — Eliminar duplicación de cálculos**: Extraer `getDebtsSummary(month, sortBy)` compartida para 4 endpoints | 2h | Calidad |
+| 17 | 🟠 | **AL-10 — Auditoría a middleware tRPC**: Mover `createAuditLog` a middleware global | 1h | Calidad |
+| 18 | 🟠 | **AL-11 — httpBatchLink limit**: Configurar `maxURLLength` en tRPC client | 10 min | Calidad |
+| 19 | 🟡 | **ME-01 — Presigned URLs para uploads**: Migrar de base64 a upload directo a Supabase Storage | 2-3h | Calidad |
+| 20 | 🟡 | **ME-02 — Lazy loading frontend**: `React.lazy()` + `<Suspense>` para rutas admin/user | 1h | Rendimiento |
+| 21 | 🟡 | **ME-03 — Helmet CSP configurado**: CSP restringido para prevenir XSS | 30 min | Seguridad |
+| 22 | 🟡 | **ME-04 — Token JWT a httpOnly cookie**: Migrar de localStorage a cookie segura | 2h | Seguridad |
+| 23 | 🟡 | **ME-05 — Refactor db.ts en módulos**: Separar God Object 1725 líneas en `db/users.ts`, `db/payments.ts`, `db/debts.ts`, etc. | 4-6h | Calidad |
+| 24 | 🟡 | **ME-06 — Sidebar debounce**: Evitar ~60 writes/s a localStorage en resize | 15 min | Calidad |
+| 25 | 🟡 | **ME-07 — Drizzle relations**: Completar `relations.ts` con relaciones entre tablas | 30 min | Calidad |
+| 26 | 🟡 | **ME-08 — Tests de integración**: Flujo completo: cobro → deuda → pago → liquidación | 3h | Calidad |
+| 27 | 🔵 | **BA-01 — Limpiar `.manus/`**: `git rm -r .manus/` y agregar a `.gitignore` | 5 min | Calidad |
+| 28 | 🔵 | **BA-02 — `.env.example`**: Documentar todas las variables de entorno | 15 min | Calidad |
+| 29 | 🔵 | **BA-03 — Logger estructurado**: Agregar `pino` o `winston` en vez de `console.log/warn/error` | 30 min | Calidad |
+| 30 | 🔵 | **BA-04 — Eliminar `@ts-ignore` y `as any`**: Tipado estricto con tipos Drizzle | 2h | Calidad |
 
 ### Reportes de auditoría generados
 
-- `CODE_REVIEW.md` — Calidad de código y arquitectura (21 hallazgos)
-- `PERFORMANCE_REVIEW.md` — Rendimiento y escalabilidad (18 hallazgos)
+| Archivo | Enfoque | Hallazgos |
+|---------|---------|-----------|
+| `CODE_REVIEW.md` | Calidad de código y arquitectura | 21 hallazgos (7 críticos, 8 medios, 6 menores) |
+| `PERFORMANCE_REVIEW.md` | Rendimiento y escalabilidad | 18 hallazgos (4 críticos, 6 altos, 5 medios, 3 bajos) |
+| `SECURITY_REVIEW.md` | Seguridad (OWASP) | 16 hallazgos (2 críticos, 3 altos, 4 medios, 3 bajos, 4 informativos) |
