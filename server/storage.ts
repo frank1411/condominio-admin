@@ -70,5 +70,15 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
 }
 
 function normalizeKey(relKey: string): string {
-  return relKey.replace(/^\/+/, "");
+  // Eliminar leading slashes
+  let key = relKey.replace(/^\/+/, "");
+  // Prevenir path traversal
+  key = key.replace(/\.\.\//g, "");
+  key = key.replace(/\.\.\\/g, "");
+  // Eliminar null bytes y caracteres de control
+  key = key.replace(/[\x00-\x1f\x7f]/g, "");
+  // Eliminar caracteres peligrosos (XSS, shell)
+  key = key.replace(/[<>"'&|;`$]/g, "");
+  // Limitar longitud
+  return key.slice(0, 512);
 }
