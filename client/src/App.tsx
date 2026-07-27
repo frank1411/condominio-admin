@@ -8,6 +8,7 @@ import { useAuth } from "./_core/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import DashboardLayout from "./components/DashboardLayout";
 import Login from "./pages/Login";
+import AuthCallback from "./pages/AuthCallback";
 import AdminDashboard from "./pages/admin/Dashboard";
 import UserDashboard from "./pages/user/Dashboard";
 import UserPayments from "./pages/user/Payments";
@@ -20,6 +21,11 @@ import AdminApartmentNames from "./pages/admin/ApartmentNames";
 
 function Router() {
   const { user, loading } = useAuth();
+
+  // Auth callback page — always accessible, no auth needed
+  if (typeof window !== "undefined" && window.location.pathname === "/auth/callback") {
+    return <AuthCallback />;
+  }
 
   if (loading) {
     return (
