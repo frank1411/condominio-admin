@@ -5,10 +5,8 @@ import { createContext } from "../server/_core/context";
 
 const app = express();
 
-// Configure body parser with larger size limit for file uploads
-app.use(express.json({ limit: "50mb" }));
-
-// tRPC API — Vercel routes /api/trpc/* to this function
+// Configure body parser with larger size limit for file uploads (base64 vouchers ~5-7MB)
+app.use(express.json({ limit: "10mb" }));
 app.use(
   "/api/trpc",
   createExpressMiddleware({
