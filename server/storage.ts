@@ -8,7 +8,7 @@ const BUCKET = process.env.SUPABASE_STORAGE_BUCKET ?? "condominio-admin";
 function getBucket(): string {
   if (!supabaseAdmin) {
     throw new Error(
-      "Supabase client not initialized. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars."
+      "Supabase client not initialized. Set SUPABASE_URL and SUPABASE_SERVICE_KEY env vars."
     );
   }
   return BUCKET;
