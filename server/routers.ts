@@ -43,7 +43,7 @@ export const appRouter = router({
 
   // ===== CONFIGURACIÓN DEL CONDOMINIO =====
   config: router({
-    get: publicProcedure.query(async () => {
+    get: protectedProcedure.query(async () => {
       const config = await db.getCondominiumConfig();
       if (!config) {
         return await db.initializeCondominiumConfig();
@@ -88,11 +88,11 @@ export const appRouter = router({
 
   // ===== GESTIÓN DE PISOS Y APARTAMENTOS =====
   floors: router({
-    list: publicProcedure.query(async () => {
+    list: protectedProcedure.query(async () => {
       return await db.getAllFloors();
     }),
 
-    withApartments: publicProcedure.query(async () => {
+    withApartments: protectedProcedure.query(async () => {
       const floors = await db.getAllFloors();
       const apartments = await db.getAllApartments();
       
@@ -104,11 +104,11 @@ export const appRouter = router({
   }),
 
   apartments: router({
-    list: publicProcedure.query(async () => {
+    list: protectedProcedure.query(async () => {
       return await db.getAllApartments();
     }),
 
-    byFloor: publicProcedure
+    byFloor: protectedProcedure
       .input(z.object({ floorId: z.number() }))
       .query(async ({ input }) => {
         return await db.getApartmentsByFloor(input.floorId);
@@ -136,7 +136,7 @@ export const appRouter = router({
 
   // ===== GESTIÓN DE COBROS =====
   charges: router({
-    list: publicProcedure.query(async () => {
+    list: protectedProcedure.query(async () => {
       return await db.getAllCharges();
     }),
 
