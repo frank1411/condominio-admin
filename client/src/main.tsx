@@ -51,6 +51,7 @@ const trpcClient = trpc.createClient({
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
+      maxURLLength: 4096,
       headers() {
         const token = getSupabaseAccessToken();
         if (token) {
