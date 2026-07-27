@@ -1741,6 +1741,26 @@ export async function getAllApartmentsWithDebtStatus(month: string, sortBy: 'flo
       return a.apartmentNumber.localeCompare(b.apartmentNumber);
     });
   }
-  
+
   return result;
+}
+
+// ============================================
+// SHARED HELPERS
+// ============================================
+export function computeDebtSummary(debts: Array<{
+  isPaid: boolean;
+  pendingAmount: string | number;
+  totalDue: string | number;
+}>) {
+  const totalApartments = debts.length;
+  const apartmentsWithDebt = debts.filter(d => !d.isPaid);
+  const apartmentsWithoutDebt = totalApartments - apartmentsWithDebt.length;
+  const totalPending = apartmentsWithDebt.reduce(
+    (sum, d) => sum + parseFloat(String(d.pendingAmount)), 0
+  );
+  const totalDue = debts.reduce(
+    (sum, d) => sum + parseFloat(String(d.totalDue)), 0
+  );
+  return { totalApartments, apartmentsWithDebt, apartmentsWithoutDebt, totalPending, totalDue };
 }

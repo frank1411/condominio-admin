@@ -456,20 +456,22 @@ export const appRouter = router({
       const debts = await db.getAllApartmentsWithDebtStatus(currentMonth, sortBy);
       
       // Calcular totales
-      const totalApartments = debts.length;
-      const apartmentsWithDebt = debts.filter(d => !d.isPaid);
-      const apartmentsWithoutDebt = totalApartments - apartmentsWithDebt.length;
-      const totalPending = apartmentsWithDebt.reduce((sum, d) => sum + parseFloat(d.pendingAmount), 0);
-      const totalDue = debts.reduce((sum, d) => sum + parseFloat(d.totalDue), 0);
-      
+      const {
+        totalApartments,
+        apartmentsWithoutDebt: paid,
+        totalPending,
+        totalDue,
+      } = db.computeDebtSummary(debts);
+      const apartmentsWithDebtCount = totalApartments - paid;
+
       return {
         currentMonth,
         debts,
         sortBy,
         summary: {
           total: totalApartments,
-          paid: apartmentsWithoutDebt,
-          pending: apartmentsWithDebt.length,
+          paid,
+          pending: apartmentsWithDebtCount,
           totalDue,
           totalPending,
         },
@@ -800,22 +802,24 @@ export const appRouter = router({
         const sortBy = 'floor';
         
         const debts = await db.getAllApartmentsWithDebtStatus(month, sortBy);
-        const totalApartments = debts.length;
-        const apartmentsWithDebt = debts.filter(d => !d.isPaid);
-        const apartmentsWithoutDebt = totalApartments - apartmentsWithDebt.length;
-        const totalPending = apartmentsWithDebt.reduce((sum, d) => sum + parseFloat(d.pendingAmount), 0);
-        const totalDue = debts.reduce((sum, d) => sum + parseFloat(d.totalDue), 0);
-        
+        const {
+          totalApartments,
+          apartmentsWithoutDebt: paid,
+          totalPending,
+          totalDue,
+        } = db.computeDebtSummary(debts);
+        const apartmentsWithDebtCount = totalApartments - paid;
+
         const config = await db.getCondominiumConfig();
-        
+
         return {
           month,
           condominiumName: config?.name || "Condominio",
           debts,
           summary: {
             total: totalApartments,
-            paid: apartmentsWithoutDebt,
-            pending: apartmentsWithDebt.length,
+            paid,
+            pending: apartmentsWithDebtCount,
             totalDue,
             totalPending,
           },
@@ -831,14 +835,16 @@ export const appRouter = router({
         const sortBy = 'floor';
         
         const debts = await db.getAllApartmentsWithDebtStatus(month, sortBy);
-        const totalApartments = debts.length;
-        const apartmentsWithDebt = debts.filter(d => !d.isPaid);
-        const apartmentsWithoutDebt = totalApartments - apartmentsWithDebt.length;
-        const totalPending = apartmentsWithDebt.reduce((sum, d) => sum + parseFloat(d.pendingAmount), 0);
-        const totalDue = debts.reduce((sum, d) => sum + parseFloat(d.totalDue), 0);
-        
+        const {
+          totalApartments,
+          apartmentsWithoutDebt: paid,
+          totalPending,
+          totalDue,
+        } = db.computeDebtSummary(debts);
+        const apartmentsWithDebtCount = totalApartments - paid;
+
         const config = await db.getCondominiumConfig();
-        
+
         const pdfBuffer = await generatePDF({
           month,
           condominiumName: config?.name || "Condominio",
@@ -851,8 +857,8 @@ export const appRouter = router({
           })),
           summary: {
             total: totalApartments,
-            paid: apartmentsWithoutDebt,
-            pending: apartmentsWithDebt.length,
+            paid,
+            pending: apartmentsWithDebtCount,
             totalDue,
             totalPending,
           },
@@ -870,14 +876,16 @@ export const appRouter = router({
         const sortBy = 'floor';
         
         const debts = await db.getAllApartmentsWithDebtStatus(month, sortBy);
-        const totalApartments = debts.length;
-        const apartmentsWithDebt = debts.filter(d => !d.isPaid);
-        const apartmentsWithoutDebt = totalApartments - apartmentsWithDebt.length;
-        const totalPending = apartmentsWithDebt.reduce((sum, d) => sum + parseFloat(d.pendingAmount), 0);
-        const totalDue = debts.reduce((sum, d) => sum + parseFloat(d.totalDue), 0);
-        
+        const {
+          totalApartments,
+          apartmentsWithoutDebt: paid,
+          totalPending,
+          totalDue,
+        } = db.computeDebtSummary(debts);
+        const apartmentsWithDebtCount = totalApartments - paid;
+
         const config = await db.getCondominiumConfig();
-        
+
         const excelBuffer = await generateExcel({
           month,
           condominiumName: config?.name || "Condominio",
@@ -890,8 +898,8 @@ export const appRouter = router({
           })),
           summary: {
             total: totalApartments,
-            paid: apartmentsWithoutDebt,
-            pending: apartmentsWithDebt.length,
+            paid,
+            pending: apartmentsWithDebtCount,
             totalDue,
             totalPending,
           },
