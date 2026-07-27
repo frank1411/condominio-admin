@@ -4,7 +4,7 @@
   "outputDirectory": "dist/public",
   "installCommand": "pnpm install",
   "functions": {
-    "api/index.js": {
+    "api/index.cjs": {
       "maxDuration": 30
     }
   },
