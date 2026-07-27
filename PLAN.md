@@ -1,530 +1,213 @@
 # Migración de CondoAdmin: Eliminar dependencia Manus + Vercel + Supabase
 
-> **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
-
 **Goal:** Desacoplar completamente el proyecto `condominio-admin` de la plataforma Manus y desplegarlo en Vercel (hosting + serverless) con Supabase (PostgreSQL + Storage + Auth).
 
-**Architecture:** Backend Express + tRPC adaptado a Vercel Serverless Functions (vía `@vercel/node`). Frontend React + Vite desplegado como SPA estática en Vercel. Base de datos migrada de MySQL a Supabase PostgreSQL usando Drizzle ORM. Reemplazar Manus OAuth con Supabase Auth (email/password). Reemplazar Manus Storage Forge API con Supabase Storage (S3). Eliminar módulos LLM/IA/Mapas que dependen de Manus Forge.
+**Architecture:** Backend Express + tRPC adaptado a Vercel Serverless Functions (vía `@vercel/node`). Frontend React + Vite desplegado como SPA estática en Vercel. Base de datos migrada de MySQL a Supabase PostgreSQL usando Drizzle ORM. Reemplazar Manus OAuth con Supabase Auth (JWT + OAuth). Reemplazar Manus Storage Forge API con Supabase Storage. Eliminar módulos LLM/IA/Mapas que dependen de Manus Forge.
 
 **Tech Stack:** React 19, Vite 7, TailwindCSS 4, tRPC 11, Drizzle ORM, Supabase (PostgreSQL + Auth + Storage), Vercel (Hosting + Serverless Functions).
 
 ---
 
-## Evaluación Exhaustiva del Proyecto
+## Estado Actual (completado)
 
-### Dependencias de Manus identificadas
+| Tarea | Estado | Commit |
+|-------|--------|--------|
+| Task 1: Eliminar dependencias Manus en package.json | ✅ | `chore(deps): remove manus dependencies, add postgres for supabase` |
+| Task 2: Migrar schema Drizzle de MySQL a PostgreSQL | ✅ | `feat(db): migrate schema from mysql to postgres` |
+| Task 3: Actualizar drizzle.config.ts y conexión DB | ✅ | `feat(db): update drizzle config and connection for postgres` |
+| Task 4: Reemplazar Manus OAuth con Supabase Auth | ✅ | `feat(auth): replace manus oauth with supabase auth` |
+| Task 5: Eliminar módulos Manus IA/LLM/Mapas/Notificaciones | ✅ | `feat(cleanup): remove manus forge modules` |
+| Task 6: Migrar Storage de Manus Forge a Supabase Storage | ✅ | `feat(storage): migrate from manus forge api to supabase storage` |
+| Task 7: Configurar Vercel para deploy | ✅ | `feat(vercel): add vercel config, serverless function entry, fix oauth removal` |
+| Task 8: Limpiar frontend de referencias Manus | ✅ | `feat(frontend): remove manus references, migrate auth to supabase, clean unused components` |
+| Task 9: Verificar compilación | ✅ | Builds: frontend (Vite) 1834 mód. ✓, servidor (esbuild) 81.3kb ✓, api (esbuild) 77.6kb ✓ |
 
-| Archivo/Componente | Dependencia | Acción |
-|---|---|---|
-| `server/_core/sdk.ts` | SDK de autenticación Manus (ExchangeToken, GetUserInfo, JWT signing) | ELIMINAR |
-| `server/_core/oauth.ts` | OAuth callback de Manus | ELIMINAR y reemplazar con Supabase Auth callback |
-| `server/_core/context.ts` | Extrae usuario vía `sdk.authenticateRequest()` | REWRITE con Supabase Auth |
-| `server/_core/trpc.ts` | Depende del contexto de `sdk` | Actualizar dependencia |
-| `server/_core/systemRouter.ts` | `notifyOwner()` usa Manus Forge API | REMOVER o reemplazar |
-| `server/_core/notification.ts` | Manus Forge API SendNotification | ELIMINAR |
-| `server/_core/llm.ts` | Manus Forge API LLM | ELIMINAR (o mover a módulo opcional) |
-| `server/_core/imageGeneration.ts` | Manus Forge API + storage | ELIMINAR |
-| `server/_core/map.ts` | Google Maps vía Manus Forge proxy | ELIMINAR (usar Google Maps directo) |
-| `server/_core/dataApi.ts` | Manus Forge API proxy genérico | ELIMINAR |
-| `server/_core/voiceTranscription.ts` | Manus Forge API | ELIMINAR |
-| `server/_core/types/manusTypes.ts` | Tipos protobuf de Manus | ELIMINAR |
-| `server/storage.ts` | Manus Forge API storage | REEMPLAZAR con AWS S3 SDK |
-| `client/src/_core/hooks/useAuth.ts` | Almacena usuario en `manus-runtime-user-info` | Limpiar legado |
-| `client/src/pages/Login.tsx` | `getLoginUrl()` apunta a Manus OAuth portal | REWRITE con Supabase Auth |
-| `client/src/const.ts` | `getLoginUrl()` genera URL de Manus OAuth | REEMPLAZAR con Supabase Auth URL |
-| `client/src/components/ManusDialog.tsx` | Diálogo de login de Manus | ELIMINAR (no usado directamente) |
-| `client/src/components/AIChatBox.tsx` | LLM vía tRPC → Manus Forge | MANTENER pero adaptar backend |
-| `vite-plugin-manus-runtime` | Plugin Vite de Manus | ELIMINAR de devDependencies |
-| `@builder.io/vite-plugin-jsx-loc` | Plugin de Manus | MANTENER (es de Builder.io) |
-| `server/db.ts` | Usa `drizzle-orm/mysql2` | MIGRAR a `drizzle-orm/pg-core` + `postgres` |
-| `drizzle/schema.ts` | `mysqlCore`, `mysqlTable`, `int()`, etc. | MIGRAR a `pg-core`, `pgTable`, `serial()`, etc. |
-| `drizzle.config.ts` | Dialecto `mysql` | CAMBIAR a `postgresql` |
+## Tareas Pendientes para Deploy
 
-### Estructura actual de archivos (resumen)
+### Task 10: Configurar proyecto Supabase
 
-```
-condominio-admin/
-├── client/
-│   ├── src/
-│   │   ├── _core/hooks/useAuth.ts
-│   │   ├── components/ (AIChatBox, DashboardLayout, ManusDialog, Map, VoucherUpload, etc.)
-│   │   ├── lib/trpc.ts
-│   │   ├── pages/ (admin/, user/, Login.tsx, Home.tsx, etc.)
-│   │   └── const.ts, App.tsx, main.tsx
-│   └── index.html
-├── server/
-│   ├── _core/
-│   │   ├── index.ts (entrypoint Express)
-│   │   ├── oauth.ts, sdk.ts, context.ts, trpc.ts
-│   │   ├── cookies.ts, env.ts, vite.ts
-│   │   ├── llm.ts, imageGeneration.ts, map.ts, dataApi.ts, notification.ts, voiceTranscription.ts
-│   │   ├── systemRouter.ts
-│   │   ├── types/ (manusTypes.ts, cookie.d.ts)
-│   │   └── (llm.ts, imageGeneration.ts, voiceTranscription.ts, map.ts, dataApi.ts)
-│   ├── db.ts (1695 líneas — funciones de base de datos)
-│   ├── routers.ts (884 líneas — tRPC routers)
-│   ├── exports.ts (PDF/Excel), storage.ts (Manus)
-│   └── *.test.ts (tests)
-├── shared/ (const.ts, types.ts, _core/errors.ts)
-├── drizzle/
-│   ├── schema.ts (221 líneas, MySQL)
-│   ├── migrations/ (SQL files)
-│   └── relations.ts
-├── package.json, tsconfig.json, vite.config.ts
-```
+**Objetivo:** Crear el proyecto en Supabase y configurar auth + storage.
+
+#### Paso 1: Crear proyecto
+- Ir a [https://supabase.com](https://supabase.com) → New Project
+- Nombre: `condominio-admin` (o el que quieras)
+- Database password: guardarla en lugar seguro
+- Región: elegir la más cercana a los usuarios
+
+#### Paso 2: Configurar Auth
+- **Settings → Auth**: Deshabilitar "Confirm email" si quieres flujo simple
+- **Authentication → Providers**: Habilitar al menos un proveedor (Google, GitHub, o email/password)
+  - Para email/password: permitir registro con email + contraseña
+  - Para Google OAuth: configurar Client ID y Client Secret desde Google Cloud Console
+- **URL Configuration**: 
+  - Site URL: `https://<tu-app>.vercel.app`
+  - Redirect URLs: `https://<tu-app>.vercel.app/auth/callback`
+
+#### Paso 3: Configurar Storage
+- **Storage → New Bucket** con nombre `vouchers` (coincide con el usado en `server/storage.ts`)
+- Configuración: público o privado según necesidad
+- **RLS Policies**: Crear política que permita a usuarios autenticados leer/subir
+
+#### Paso 4: Obtener credenciales
+| Variable | Dónde obtenerla |
+|----------|-----------------|
+| `SUPABASE_URL` | Project Settings → API → Project URL |
+| `SUPABASE_ANON_KEY` | Project Settings → API → anon public key |
+| `SUPABASE_SERVICE_KEY` | Project Settings → API → service_role key (secreta) |
+| `DATABASE_URL` | Project Settings → Database → Connection string (con password) |
+
+> Nota: Para el pooler de conexiones usar `DATABASE_URL` con el pooler de Supabase (puerto 6543).
+
+#### Paso 5: Seed data (opcional)
+Si hay datos de prueba, ejecutar seed SQL después de aplicar migraciones.
 
 ---
 
-## Plan de Trabajo — Tareas Granulares
+### Task 11: Configurar deploy en Vercel
 
-### Task 1: Limpiar dependencias de Manus en package.json
+**Objetivo:** Desplegar el proyecto en Vercel conectado al repositorio GitHub.
 
-**Objective:** Eliminar el plugin `vite-plugin-manus-runtime` y dependencias MySQL, agregar dependencias de PostgreSQL.
-
-**Files:**
-- Modify: `package.json`
-
-**Step 1: Editar package.json**
-
+#### Paso 1: Push a GitHub
 ```bash
-pnpm remove vite-plugin-manus-runtime mysql2
-pnpm add postgres drizzle-orm @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
-pnpm add -D drizzle-kit
+# Verificar que el remote apunta a frank1411/condominio-admin
+git remote -v
+
+# Si es necesario, cambiar el remote
+# git remote set-url origin https://github.com/frank1411/condominio-admin.git
+
+# Push
+git push origin main
 ```
 
-Resultado: `mysql2` eliminado, `postgres` agregado, `vite-plugin-manus-runtime` eliminado.
+#### Paso 2: Importar proyecto en Vercel
+1. Ir a [https://vercel.com/new](https://vercel.com/new)
+2. Importar repositorio `frank1411/condominio-admin`
+3. **Framework Preset:** Other (o Vite, detectará automáticamente)
+4. **Build Command:** `pnpm build`
+5. **Output Directory:** `dist/public`
+6. **Install Command:** `pnpm install`
 
-**Step 2: Commit**
+#### Paso 3: Configurar variables de entorno en Vercel
 
-```bash
-git add package.json pnpm-lock.yaml
-git commit -m "chore(deps): remove manus dependencies, add postgres and s3"
-```
+| Variable | Valor |
+|----------|-------|
+| `DATABASE_URL` | `postgresql://postgres:***@xxx.supabase.co:5432/postgres` |
+| `SUPABASE_URL` | `https://xxx.supabase.co` |
+| `SUPABASE_ANON_KEY` | `eyJ...` (anon public key) |
+| `SUPABASE_SERVICE_KEY` | `eyJ...` (service_role key) |
+| `ADMIN_OPEN_ID` | `admin` (o el email del admin) |
+| `VITE_SUPABASE_URL` | `https://xxx.supabase.co` (prefijo VITE_ para exp. en frontend) |
+| `VITE_SUPABASE_ANON_KEY` | `eyJ...` |
+| `VITE_GOOGLE_MAPS_API_KEY` | Opcional, para mapas |
+| `NODE_ENV` | `production` |
+| `JWT_SECRET` | Opcional, solo si se usa en alguna parte |
+
+#### Paso 4: Configurar dominio personalizado (opcional)
+- Ir a Project → Domains → Add
+- Seguir instrucciones de configuración DNS
+
+#### Paso 5: Deploy
+- Vercel hace deploy automático al pushear a `main`
+- También se puede trigger manual desde Dashboard → Deployments
 
 ---
 
-### Task 2: Migrar esquema Drizzle de MySQL a PostgreSQL
+### Task 12: Ejecutar migraciones Drizzle
 
-**Objective:** Convertir todas las definiciones de tablas de `mysqlCore` a `pgCore`.
+**Objetivo:** Aplicar el esquema de base de datos a Supabase PostgreSQL.
 
-**Files:**
-- Modify: `drizzle/schema.ts`
-
-**Step 1: Reemplazar imports en `drizzle/schema.ts`**
-
-Cambiar de:
-```typescript
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, boolean, date, longtext } from "drizzle-orm/mysql-core";
-```
-a:
-```typescript
-import { integer, pgEnum, pgTable, text, timestamp, varchar, decimal, boolean, date, serial } from "drizzle-orm/pg-core";
-```
-
-**Step 2: Convertir cada tabla**
-
-Para cada `mysqlTable("nombre", {...})`:
-- Cambiar a `pgTable("nombre", {...})`
-- `int("id").autoincrement().primaryKey()` → `serial("id").primaryKey()`
-- `mysqlEnum("col", ["a", "b"])` → crear `pgEnum("nombre_enum", ["a", "b"])` y usar `nombre_enum("col")`
-- `varchar("col", { length: 320 })` → `varchar("col", { length: 320 })` (igual)
-- `text("col")` → `text("col")` (igual)
-- `decimal("col", { precision: 10, scale: 2 })` → `decimal("col", { precision: 10, scale: 2 })` (igual)
-- `boolean("col")` → `boolean("col")` (igual)
-- `timestamp("col")` → `timestamp("col")` (igual)
-- `date("col")` → `date("col")` (igual)
-- `longtext("col")` → `text("col")` (no existe longtext en pg)
-
-**Step 3: Crear enums de PostgreSQL**
-
-```typescript
-export const roleEnum = pgEnum("role", ["user", "admin"]);
-export const approvalStatusEnum = pgEnum("approval_status", ["pending", "approved", "rejected"]);
-export const currencyEnum = pgEnum("currency", ["USD", "VES"]);
-export const methodEnum = pgEnum("method", ["transfer", "cash", "mobile_payment", "other"]);
-export const statusEnum = pgEnum("status", ["pending", "paid", "overdue", "cancelled"]);
-// ... revisar el schema completo para identificar todos los enums
-```
-
-**Step 4: Commit**
-
+#### Opción A: Usando Supabase SQL Editor (recomendado para deploy inicial)
 ```bash
-git add drizzle/schema.ts
-git commit -m "feat(db): migrate schema from mysql to postgres"
-```
-
----
-
-### Task 3: Actualizar drizzle.config.ts y conexión DB
-
-**Objective:** Cambiar la configuración de Drizzle Kit y la conexión de BD a PostgreSQL.
-
-**Files:**
-- Modify: `drizzle.config.ts`
-- Modify: `server/db.ts`
-
-**Step 1: Cambiar `drizzle.config.ts`**
-
-```typescript
-import { defineConfig } from "drizzle-kit";
-
-export default defineConfig({
-  schema: "./drizzle/schema.ts",
-  out: "./drizzle/migrations",
-  dialect: "postgresql",
-  dbCredentials: {
-    url: process.env.DATABASE_URL!,
-  },
-});
-```
-
-**Step 2: Cambiar `server/db.ts`**
-
-Cambiar imports y la instancia de drizzle:
-```typescript
-// Antes (MySQL):
-// import { drizzle } from "drizzle-orm/mysql2";
-
-// Después (PostgreSQL):
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import * as schema from "../drizzle/schema";
-
-let _db: ReturnType<typeof drizzle> | null = null;
-
-export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      const queryClient = postgres(process.env.DATABASE_URL, { max: 10 });
-      _db = drizzle(queryClient, { schema });
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
-    }
-  }
-  return _db;
-}
-```
-
-**Nota importante:** `server/db.ts` tiene 1695 líneas con funciones de negocio. El cambio de dialecto debe verificar que las funciones usen operadores compatibles con PostgreSQL (`eq, and, gte, lte, desc, isNull, asc` ya son cross-dialect en Drizzle). Verificar funciones que usen `concat`, `JSON`, o funciones MySQL específicas.
-
-**Step 3: Commit**
-
-```bash
-git add drizzle.config.ts server/db.ts
-git commit -m "feat(db): update drizzle config and connection for postgres"
-```
-
----
-
-### Task 4: Reemplazar Manus OAuth con Supabase Auth
-
-**Objective:** Implementar autenticación usando Supabase Auth (email/password) en lugar de Manus OAuth.
-
-**Files:**
-- Create: `server/_core/supabase.ts`
-- Delete: `server/_core/oauth.ts`
-- Modify: `server/_core/context.ts`
-- Modify: `server/_core/env.ts`
-- Modify: `server/_core/sdk.ts` (eliminar contenido, mantener solo JWT helpers si aplica)
-
-**Step 1: Crear `server/_core/supabase.ts`**
-
-```typescript
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: false,
-  },
-});
-```
-
-**Step 2: Instalar Supabase client**
-
-```bash
-pnpm add @supabase/supabase-js
-```
-
-**Step 3: Modificar `server/_core/env.ts`**
-
-Agregar:
-```typescript
-supabaseUrl: process.env.SUPABASE_URL ?? "",
-supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? "",
-supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
-```
-
-Remover variables obsoletas:
-- `oAuthServerUrl` (Manus)
-- `forgeApiUrl` (Manus)
-- `forgeApiKey` (Manus)
-- `ownerOpenId` (Manus)
-
-**Step 4: Modificar `server/_core/context.ts`**
-
-Cambiar para verificar sesión con Supabase:
-```typescript
-import { supabase } from "./supabase";
-import * as db from "../db";
-
-export async function createContext(opts: CreateExpressContextOptions): Promise<TrpcContext> {
-  let user: User | null = null;
-
-  try {
-    const token = opts.req.cookies?.[COOKIE_NAME];
-    if (token) {
-      const { data: { user: supabaseUser } } = await supabase.auth.getUser(token);
-      if (supabaseUser?.email) {
-        user = await db.getUserByEmail(supabaseUser.email);
-      }
-    }
-  } catch (error) {
-    user = null;
-  }
-
-  return { req: opts.req, res: opts.res, user };
-}
-```
-
-**Step 5: Commit**
-
-```bash
-git add server/_core/supabase.ts server/_core/context.ts server/_core/env.ts
-git rm server/_core/oauth.ts server/_core/types/manusTypes.ts server/_core/sdk.ts
-git commit -m "feat(auth): replace manus oauth with supabase auth"
-```
-
----
-
-### Task 5: Eliminar módulos Manus IA/LLM/Mapas/Notificaciones
-
-**Objective:** Remover todo el código que depende del Manus Forge API.
-
-**Files:**
-- Delete: `server/_core/llm.ts`
-- Delete: `server/_core/imageGeneration.ts`
-- Delete: `server/_core/map.ts`
-- Delete: `server/_core/dataApi.ts`
-- Delete: `server/_core/notification.ts`
-- Delete: `server/_core/voiceTranscription.ts`
-- Modify: `server/_core/systemRouter.ts` (remover `notifyOwner`)
-
-**Step 1: Eliminar archivos y limpiar systemRouter**
-
-**Step 2: Commit**
-
-```bash
-git rm server/_core/llm.ts server/_core/imageGeneration.ts server/_core/map.ts
-git rm server/_core/dataApi.ts server/_core/notification.ts server/_core/voiceTranscription.ts
-git add server/_core/systemRouter.ts
-git commit -m "feat: remove manus forge API modules (llm, image, maps, notifications)"
-```
-
----
-
-### Task 6: Migrar Storage de Manus Forge a Supabase Storage
-
-**Objective:** Usar Supabase Storage (S3-compatible) para subida de vouchers/comprobantes.
-
-**Files:**
-- Rewrite: `server/storage.ts`
-
-**Step 1: Re-escribir `server/storage.ts`**
-
-```typescript
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-
-const s3 = new S3Client({
-  region: process.env.SUPABASE_S3_REGION!,
-  endpoint: process.env.SUPABASE_S3_ENDPOINT!,
-  credentials: {
-    accessKeyId: process.env.SUPABASE_S3_ACCESS_KEY!,
-    secretAccessKey: process.env.SUPABASE_S3_SECRET_KEY!,
-  },
-  forcePathStyle: true,
-});
-
-export async function uploadFile(bucket: string, key: string, body: Buffer, contentType: string) {
-  await s3.send(new PutObjectCommand({
-    Bucket: bucket,
-    Key: key,
-    Body: body,
-    ContentType: contentType,
-  }));
-
-  return getSignedUrl(s3, new GetObjectCommand({ Bucket: bucket, Key: key }), {
-    expiresIn: 3600,
-  });
-}
-```
-
-**Step 2: Commit**
-
-```bash
-git add server/storage.ts
-git commit -m "feat(storage): migrate from manus forge to supabase s3 storage"
-```
-
----
-
-### Task 7: Configurar Vercel para deploy
-
-**Objective:** Crear la estructura necesaria para deployar en Vercel.
-
-**Files:**
-- Create: `vercel.json`
-- Create: `api/index.ts`
-- Modify: `package.json` (scripts para build Vercel)
-
-**Step 1: Crear `vercel.json`**
-
-```json
-{
-  "version": 2,
-  "buildCommand": "pnpm build",
-  "outputDirectory": "dist/client",
-  "functions": {
-    "api/index.ts": {
-      "memory": 256,
-      "maxDuration": 30
-    }
-  },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.ts" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
-```
-
-**Step 2: Crear `api/index.ts`**
-
-```typescript
-import "dotenv/config";
-import express from "express";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { appRouter } from "../server/routers";
-import { createContext } from "../server/_core/context";
-import cookieParser from "cookie-parser";
-
-const app = express();
-app.use(express.json({ limit: "50mb" }));
-app.use(cookieParser());
-
-app.use(
-  "/api/trpc",
-  createExpressMiddleware({ router: appRouter, createContext })
-);
-
-export default app;
-```
-
-**Step 3: Commit**
-
-```bash
-git add vercel.json api/index.ts
-git commit -m "feat(deploy): configure vercel deployment"
-```
-
----
-
-### Task 8: Limpiar frontend de referencias Manus
-
-**Objective:** Eliminar referencias obsoletas del frontend.
-
-**Files:**
-- Modify: `vite.config.ts`
-- Modify: `client/src/const.ts`
-- Modify: `client/src/pages/Login.tsx`
-- Modify: `client/src/_core/hooks/useAuth.ts`
-- Delete: `client/src/components/ManusDialog.tsx`
-
-**Step 1: Actualizar `vite.config.ts`**
-
-Remover `vitePluginManusRuntime()` y `vitePluginManusDebugCollector()` de los plugins.
-
-**Step 2: Re-escribir `client/src/const.ts`**
-
-**Step 3: Re-escribir `Login.tsx`**
-
-Implementar formulario de login con email/contraseña usando Supabase Auth.
-
-**Step 4: Commit**
-
-```bash
-git add vite.config.ts client/src/const.ts client/src/pages/Login.tsx
-git rm client/src/components/ManusDialog.tsx
-git commit -m "feat(frontend): migrate login from manus oauth to supabase auth"
-```
-
----
-
-### Task 9: Probar compilación y migraciones
-
-**Objective:** Verificar que el proyecto compila y las migraciones funcionan.
-
-**Step 1: Verificar TypeScript**
-
-```bash
-pnpm run check
-```
-Resultado esperado: Sin errores de tipo.
-
-**Step 2: Generar migración**
-
-```bash
+# Generar migraciones desde el schema
 pnpm run db:generate
+
+# Ver el archivo SQL generado en drizzle/migrations/
+# Copiar y pegar en Supabase SQL Editor
 ```
-Resultado esperado: Nuevo archivo SQL en `drizzle/migrations/`.
 
-**Step 3: Build de frontend**
-
+#### Opción B: Usando Drizzle Kit (si tienes acceso a la DB)
 ```bash
-pnpm run build
+pnpm run db:push
 ```
-Resultado esperado: `dist/client/` con los assets compilados.
+
+#### Opción C: Usando migraciones manuales
+```bash
+# Conectar a la DB y ejecutar el archivo SQL
+psql "$DATABASE_URL" -f drizzle/migrations/0000_*.sql
+```
+
+#### Verificar
+```sql
+-- En Supabase SQL Editor
+SELECT table_name FROM information_schema.tables 
+WHERE table_schema = 'public' ORDER BY table_name;
+```
+Deberías ver: `users`, `payments`, `charges`, `apartments`, `requests`, etc.
 
 ---
 
-## Variables de Entorno Requeridas (Vercel + Supabase)
+### Task 13: Pruebas post-deploy
 
+**Objetivo:** Verificar que todo funciona en producción.
+
+#### Prueba 1: Frontend
+- Acceder a `https://<tu-app>.vercel.app`
+- Verificar que carga la página de login
+- Verificar que el SPA routing funciona (navegar a `/login` directamente)
+
+#### Prueba 2: Auth
+- Hacer clic en "Iniciar Sesión"
+- Verificar que redirige a Supabase Auth UI
+- Completar login (Google o email/password)
+- Verificar que redirige a `/auth/callback` y luego al dashboard
+
+#### Prueba 3: API
+```bash
+curl -v https://<tu-app>.vercel.app/api/trpc/health | jq
 ```
-# Supabase
-DATABASE_URL=postgresql://postgres:xxx@xxx.supabase.co:5432/postgres
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_ANON_KEY=xxx
-SUPABASE_SERVICE_ROLE_KEY=xxx
-SUPABASE_S3_ENDPOINT=https://xxx.supabase.co/storage/v1/s3
-SUPABASE_S3_REGION=us-east-1
-SUPABASE_S3_ACCESS_KEY=xxx
-SUPABASE_S3_SECRET_KEY=xxx
+Respuesta esperada: `{"status":"ok"}`
 
-# Aplicación
-JWT_SECRET=xxx
+#### Prueba 4: Storage
+- Subir un voucher/comprobante
+- Verificar que se guarda en Supabase Storage bucket `vouchers`
+- Verificar que se puede descargar/ver
+
+#### Prueba 5: Base de datos
+- Verificar que usuarios nuevos se crean al hacer login
+- Verificar que datos existentes son accesibles
+
+#### Prueba 6: Rendimiento
+- Verificar cold starts (primera carga después de inactividad)
+- Verificar timeouts en operaciones largas (PDF, Excel)
+
+---
+
+## Variables de Entorno Requeridas
+
+```bash
+# Supabase Database
+DATABASE_URL=postgresql://postgres:***@xxx.supabase.co:5432/postgres
+
+# Supabase Auth
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_ANON_KEY=eyJ...  # anon public (segura para frontend)
+SUPABASE_SERVICE_KEY=eyJ...  # service_role (SECRETA, solo backend)
+
+# Frontend (prefijo VITE_)
+VITE_SUPABASE_URL=https://xxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJ...
+VITE_GOOGLE_MAPS_API_KEY=xxx  # opcional
+
+# App
+ADMIN_OPEN_ID=admin  # o email del admin
 NODE_ENV=production
 ```
 
----
-
-## Riesgos y Consideraciones
+## Notas Técnicas
 
 1. **tRPC y Serverless:** Funciona bien en Vercel. Usar stale times largos en React Query para mitigar cold starts.
-2. **Pool de conexiones:** Usar Supabase Pooler (PgBouncer) con pool máximo bajo (max: 5-10).
+2. **Pool de conexiones:** Usar Supabase Pooler (PgBouncer) con pool máximo bajo (max: 5-10). Puerto: 6543.
 3. **Migración de datos:** Las migraciones MySQL existentes no son aplicables. Generar migración fresh con `drizzle-kit generate`.
-4. **Límite Vercel Gratuito:** Timeout 10s en serverless. Operaciones lentas (PDF, Excel) pueden excederlo.
-5. **server/db.ts (1695 líneas):** Verificar manualmente que todas las queries sean cross-dialect. Drizzle abstrae la mayoría, pero `concat`, `json_extract`, o funciones de fecha MySQL necesitan adaptación.
-
----
-
-## Orden de Ejecución
-
-```
-Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7 → Task 8 → Task 9
-```
-
-Cada tarea es autocontenida y commiteable. No avanzar sin verificar que la anterior compila.
+4. **Límite Vercel Gratuito:** Timeout 30s configurado en vercel.json para la función serverless. Operaciones largas como PDF pueden necesitar timeout mayor o background jobs.
+5. **Storage:** Se usa `supabaseAdmin.storage` (no AWS S3 SDK), más simple y directo para el ecosistema Supabase.
+6. **Auth flow:** Frontend → Supabase Auth (OAuth redirect) → Callback page → Guarda sesión en localStorage → tRPC incluye Bearer token.

@@ -609,3 +609,59 @@ Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7 → Tas
 ```
 
 Cada tarea es autocontenida y commiteable. No avanzar a la siguiente sin verificar que la anterior compila.
+
+💚 **Estado de ejecución:** Tasks 1-9 completadas. Tasks 10-13 pendientes para deploy.
+
+---
+
+## Despliegue (Tasks 10-13)
+
+### Task 10: Configurar proyecto Supabase
+
+**Objetivo:** Crear el proyecto en Supabase y configurar auth + storage.
+
+1. Ir a [supabase.com](https://supabase.com) → New Project → nombre `condominio-admin`
+2. **Auth** → Habilitar Google OAuth o email/password como proveedor
+3. **URL Configuration** → Site URL: `https://<app>.vercel.app`, Redirect URLs: `https://<app>.vercel.app/auth/callback`
+4. **Storage** → Crear bucket `vouchers` con RLS policies para usuarios autenticados
+5. **Obtener credenciales:**
+   - `SUPABASE_URL` → Project Settings → API → Project URL
+   - `SUPABASE_ANON_KEY` → Project Settings → API → anon public key
+   - `SUPABASE_SERVICE_KEY` → Project Settings → API → service_role key
+   - `DATABASE_URL` → Project Settings → Database → Connection string (usar pooler puerto 6543)
+
+### Task 11: Configurar deploy en Vercel
+
+**Objetivo:** Desplegar el proyecto en Vercel conectado al repositorio GitHub.
+
+1. Pushear a GitHub: `git push origin main`
+2. Importar en [vercel.com/new](https://vercel.com/new) desde `frank1411/condominio-admin`
+3. **Build Command:** `pnpm build`
+4. **Output Directory:** `dist/public`
+5. **Install Command:** `pnpm install`
+6. Configurar environment variables (ver sección arriba) en Vercel Dashboard
+7. Si se desea dominio personalizado: Project → Domains → Add
+
+### Task 12: Ejecutar migraciones Drizzle
+
+**Objetivo:** Aplicar el esquema de base de datos a Supabase PostgreSQL.
+
+```bash
+# Generar migraciones desde el schema
+pnpm run db:generate
+
+# Aplicar vía Drizzle Kit
+pnpm run db:push
+```
+O copiar el SQL generado en Supabase SQL Editor.
+
+### Task 13: Pruebas post-deploy
+
+**Objetivo:** Verificar que todo funciona en producción.
+
+1. Frontend carga en `https://<app>.vercel.app`
+2. Login redirige a Supabase Auth y vuelve al dashboard
+3. `curl https://<app>.vercel.app/api/trpc/health` → `{"status":"ok"}`
+4. Subir voucher → se guarda en bucket `vouchers`
+5. Usuarios nuevos se crean al hacer login
+6. Verificar cold starts y timeouts en operaciones largas
