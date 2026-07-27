@@ -1,5 +1,10 @@
+"use strict";
+var __create = Object.create;
 var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __esm = (fn, res) => function __init() {
   return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
 };
@@ -7,9 +12,25 @@ var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
+var __copyProps = (to, from, except, desc2) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc2 = __getOwnPropDesc(from, key)) || desc2.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // server/_core/supabase.ts
-import { createClient } from "@supabase/supabase-js";
 async function verifySupabaseToken(token) {
   if (!supabaseAnon) return null;
   const { data, error } = await supabaseAnon.auth.getUser(token);
@@ -20,17 +41,18 @@ function extractAuthToken(authHeader) {
   if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
   return authHeader.slice(7);
 }
-var supabaseUrl, supabaseAnonKey, supabaseServiceKey, supabaseAnon, supabaseAdmin;
+var import_supabase_js, supabaseUrl, supabaseAnonKey, supabaseServiceKey, supabaseAnon, supabaseAdmin;
 var init_supabase = __esm({
   "server/_core/supabase.ts"() {
     "use strict";
+    import_supabase_js = require("@supabase/supabase-js");
     supabaseUrl = process.env.SUPABASE_URL ?? "";
     supabaseAnonKey = process.env.SUPABASE_ANON_KEY ?? "";
     supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-    supabaseAnon = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey, {
+    supabaseAnon = supabaseUrl && supabaseAnonKey ? (0, import_supabase_js.createClient)(supabaseUrl, supabaseAnonKey, {
       auth: { autoRefreshToken: false, persistSession: false }
     }) : null;
-    supabaseAdmin = supabaseUrl && supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey, {
+    supabaseAdmin = supabaseUrl && supabaseServiceKey ? (0, import_supabase_js.createClient)(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false }
     }) : null;
   }
@@ -85,9 +107,14 @@ var init_storage = __esm({
 });
 
 // api/_entry.ts
-import "dotenv/config";
-import express from "express";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
+var entry_exports = {};
+__export(entry_exports, {
+  default: () => entry_default
+});
+module.exports = __toCommonJS(entry_exports);
+var import_config = require("dotenv/config");
+var import_express = __toESM(require("express"), 1);
+var import_express2 = require("@trpc/server/adapters/express");
 
 // shared/const.ts
 var COOKIE_NAME = "app_session_id";
@@ -113,20 +140,20 @@ function getSessionCookieOptions(req) {
 }
 
 // server/_core/systemRouter.ts
-import { z } from "zod";
+var import_zod = require("zod");
 
 // server/_core/trpc.ts
-import { initTRPC, TRPCError } from "@trpc/server";
-import superjson from "superjson";
-var t = initTRPC.context().create({
-  transformer: superjson
+var import_server = require("@trpc/server");
+var import_superjson = __toESM(require("superjson"), 1);
+var t = import_server.initTRPC.context().create({
+  transformer: import_superjson.default
 });
 var router = t.router;
 var publicProcedure = t.procedure;
 var requireUser = t.middleware(async (opts) => {
   const { ctx, next } = opts;
   if (!ctx.user) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+    throw new import_server.TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
   }
   return next({
     ctx: {
@@ -140,7 +167,7 @@ var adminProcedure = t.procedure.use(
   t.middleware(async (opts) => {
     const { ctx, next } = opts;
     if (!ctx.user || ctx.user.role !== "admin") {
-      throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
+      throw new import_server.TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
     }
     return next({
       ctx: {
@@ -154,8 +181,8 @@ var adminProcedure = t.procedure.use(
 // server/_core/systemRouter.ts
 var systemRouter = router({
   health: publicProcedure.input(
-    z.object({
-      timestamp: z.number().min(0, "timestamp cannot be negative")
+    import_zod.z.object({
+      timestamp: import_zod.z.number().min(0, "timestamp cannot be negative")
     })
   ).query(() => ({
     ok: true
@@ -163,31 +190,21 @@ var systemRouter = router({
 });
 
 // server/routers.ts
-import { z as z2 } from "zod";
-import { TRPCError as TRPCError2 } from "@trpc/server";
+var import_zod2 = require("zod");
+var import_server2 = require("@trpc/server");
 
 // server/db.ts
-import { eq, and, desc, asc } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
+var import_drizzle_orm = require("drizzle-orm");
+var import_postgres_js = require("drizzle-orm/postgres-js");
 
 // drizzle/schema.ts
-import {
-  pgEnum,
-  pgTable,
-  serial,
-  integer,
-  text,
-  timestamp,
-  varchar,
-  decimal,
-  boolean
-} from "drizzle-orm/pg-core";
-var roleEnum = pgEnum("role", ["user", "admin"]);
-var approvalStatusEnum = pgEnum("approval_status", ["pending", "approved", "rejected"]);
-var currencyEnum = pgEnum("currency", ["USD", "VES"]);
-var paymentStatusEnum = pgEnum("payment_status", ["pending", "approved", "rejected"]);
-var reminderStatusEnum = pgEnum("reminder_status", ["pending", "sent", "failed"]);
-var notificationTypeEnum = pgEnum("notification_type", [
+var import_pg_core = require("drizzle-orm/pg-core");
+var roleEnum = (0, import_pg_core.pgEnum)("role", ["user", "admin"]);
+var approvalStatusEnum = (0, import_pg_core.pgEnum)("approval_status", ["pending", "approved", "rejected"]);
+var currencyEnum = (0, import_pg_core.pgEnum)("currency", ["USD", "VES"]);
+var paymentStatusEnum = (0, import_pg_core.pgEnum)("payment_status", ["pending", "approved", "rejected"]);
+var reminderStatusEnum = (0, import_pg_core.pgEnum)("reminder_status", ["pending", "sent", "failed"]);
+var notificationTypeEnum = (0, import_pg_core.pgEnum)("notification_type", [
   "payment_approved",
   "payment_rejected",
   "payment_received",
@@ -196,163 +213,163 @@ var notificationTypeEnum = pgEnum("notification_type", [
   "reminder",
   "system"
 ]);
-var users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
-  name: text("name"),
-  email: varchar("email", { length: 320 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
+var users = (0, import_pg_core.pgTable)("users", {
+  id: (0, import_pg_core.serial)("id").primaryKey(),
+  openId: (0, import_pg_core.varchar)("openId", { length: 64 }).notNull().unique(),
+  name: (0, import_pg_core.text)("name"),
+  email: (0, import_pg_core.varchar)("email", { length: 320 }),
+  loginMethod: (0, import_pg_core.varchar)("loginMethod", { length: 64 }),
   role: roleEnum("role").default("user").notNull(),
-  apartmentId: integer("apartmentId"),
+  apartmentId: (0, import_pg_core.integer)("apartmentId"),
   // FK a apartments
-  isApproved: boolean("isApproved").default(false),
+  isApproved: (0, import_pg_core.boolean)("isApproved").default(false),
   // DEPRECATED, usar approvalStatus
   approvalStatus: approvalStatusEnum("approvalStatus").default("pending"),
   // Estado de aprobación
-  approvedBy: integer("approvedBy"),
+  approvedBy: (0, import_pg_core.integer)("approvedBy"),
   // FK a users (admin que aprobó)
-  approvedAt: timestamp("approvedAt"),
-  rejectionReason: text("rejectionReason"),
+  approvedAt: (0, import_pg_core.timestamp)("approvedAt"),
+  rejectionReason: (0, import_pg_core.text)("rejectionReason"),
   // Razón si fue rechazado
-  isActive: boolean("isActive").default(true),
+  isActive: (0, import_pg_core.boolean)("isActive").default(true),
   // Usuario activo/inactivo
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull()
+  createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+  updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull(),
+  lastSignedIn: (0, import_pg_core.timestamp)("lastSignedIn").defaultNow().notNull()
 });
-var condominiumConfig = pgTable("condominiumConfig", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).default("Mi Condominio"),
-  floors: integer("floors").default(5),
+var condominiumConfig = (0, import_pg_core.pgTable)("condominiumConfig", {
+  id: (0, import_pg_core.serial)("id").primaryKey(),
+  name: (0, import_pg_core.varchar)("name", { length: 255 }).default("Mi Condominio"),
+  floors: (0, import_pg_core.integer)("floors").default(5),
   // PB + 4 pisos = 5 niveles
-  apartmentsPerFloor: integer("apartmentsPerFloor").default(6),
-  baseFee: decimal("baseFee", { precision: 10, scale: 2 }).default("0.00"),
+  apartmentsPerFloor: (0, import_pg_core.integer)("apartmentsPerFloor").default(6),
+  baseFee: (0, import_pg_core.decimal)("baseFee", { precision: 10, scale: 2 }).default("0.00"),
   // Mensualidad base en USD
   defaultCurrency: currencyEnum("defaultCurrency").default("USD"),
-  exchangeRate: decimal("exchangeRate", { precision: 10, scale: 4 }).default("1.0000"),
+  exchangeRate: (0, import_pg_core.decimal)("exchangeRate", { precision: 10, scale: 4 }).default("1.0000"),
   // VES a USD
-  reminderDay: integer("reminderDay").default(5),
+  reminderDay: (0, import_pg_core.integer)("reminderDay").default(5),
   // Día del mes para enviar recordatorios (1-28)
-  apartmentNamePattern: varchar("apartmentNamePattern", { length: 255 }).default("Apt-{piso}-{numero}"),
+  apartmentNamePattern: (0, import_pg_core.varchar)("apartmentNamePattern", { length: 255 }).default("Apt-{piso}-{numero}"),
   // Patrón para nombres
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull()
+  createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+  updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull()
 });
-var floors = pgTable("floors", {
-  id: serial("id").primaryKey(),
-  floorNumber: integer("floorNumber").notNull(),
+var floors = (0, import_pg_core.pgTable)("floors", {
+  id: (0, import_pg_core.serial)("id").primaryKey(),
+  floorNumber: (0, import_pg_core.integer)("floorNumber").notNull(),
   // 0 = PB, 1-4 = pisos
-  floorName: varchar("floorName", { length: 100 }).notNull(),
+  floorName: (0, import_pg_core.varchar)("floorName", { length: 100 }).notNull(),
   // "Planta Baja", "Piso 1", etc.
-  createdAt: timestamp("createdAt").defaultNow().notNull()
+  createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull()
 });
-var apartments = pgTable("apartments", {
-  id: serial("id").primaryKey(),
-  floorId: integer("floorId").notNull(),
+var apartments = (0, import_pg_core.pgTable)("apartments", {
+  id: (0, import_pg_core.serial)("id").primaryKey(),
+  floorId: (0, import_pg_core.integer)("floorId").notNull(),
   // FK a floors
-  apartmentNumber: varchar("apartmentNumber", { length: 50 }).notNull(),
+  apartmentNumber: (0, import_pg_core.varchar)("apartmentNumber", { length: 50 }).notNull(),
   // "101", "201", etc.
-  unitName: varchar("unitName", { length: 100 }),
+  unitName: (0, import_pg_core.varchar)("unitName", { length: 100 }),
   // Nombre descriptivo
-  createdAt: timestamp("createdAt").defaultNow().notNull()
+  createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull()
 });
-var charges = pgTable("charges", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
+var charges = (0, import_pg_core.pgTable)("charges", {
+  id: (0, import_pg_core.serial)("id").primaryKey(),
+  name: (0, import_pg_core.varchar)("name", { length: 255 }).notNull(),
   // "Agua", "Electricidad", etc.
-  description: text("description"),
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  description: (0, import_pg_core.text)("description"),
+  amount: (0, import_pg_core.decimal)("amount", { precision: 10, scale: 2 }).notNull(),
   currency: currencyEnum("currency").default("USD"),
-  isRecurring: boolean("isRecurring").default(true),
+  isRecurring: (0, import_pg_core.boolean)("isRecurring").default(true),
   // ¿Es mensual?
-  isActive: boolean("isActive").default(true),
-  apartmentId: integer("apartmentId"),
+  isActive: (0, import_pg_core.boolean)("isActive").default(true),
+  apartmentId: (0, import_pg_core.integer)("apartmentId"),
   // FK a apartments (null = aplica a todos)
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull()
+  createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+  updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull()
 });
-var payments = pgTable("payments", {
-  id: serial("id").primaryKey(),
-  userId: integer("userId").notNull(),
+var payments = (0, import_pg_core.pgTable)("payments", {
+  id: (0, import_pg_core.serial)("id").primaryKey(),
+  userId: (0, import_pg_core.integer)("userId").notNull(),
   // FK a users
-  apartmentId: integer("apartmentId").notNull(),
+  apartmentId: (0, import_pg_core.integer)("apartmentId").notNull(),
   // FK a apartments
-  month: varchar("month", { length: 7 }).notNull(),
+  month: (0, import_pg_core.varchar)("month", { length: 7 }).notNull(),
   // "2026-03" formato YYYY-MM
-  voucherNumber: varchar("voucherNumber", { length: 100 }),
-  voucherImage: text("voucherImage"),
+  voucherNumber: (0, import_pg_core.varchar)("voucherNumber", { length: 100 }),
+  voucherImage: (0, import_pg_core.text)("voucherImage"),
   // DEPRECATED: Base64 antiguo, migrar a S3
-  voucherImageUrl: varchar("voucherImageUrl", { length: 500 }),
+  voucherImageUrl: (0, import_pg_core.varchar)("voucherImageUrl", { length: 500 }),
   // URL de S3
-  voucherImageKey: varchar("voucherImageKey", { length: 255 }),
+  voucherImageKey: (0, import_pg_core.varchar)("voucherImageKey", { length: 255 }),
   // Clave en S3 para eliminar
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  amount: (0, import_pg_core.decimal)("amount", { precision: 10, scale: 2 }).notNull(),
   currency: currencyEnum("currency").default("USD"),
   status: paymentStatusEnum("status").default("pending"),
-  notes: text("notes"),
-  submittedAt: timestamp("submittedAt").defaultNow().notNull(),
-  reviewedAt: timestamp("reviewedAt"),
-  reviewedBy: integer("reviewedBy"),
+  notes: (0, import_pg_core.text)("notes"),
+  submittedAt: (0, import_pg_core.timestamp)("submittedAt").defaultNow().notNull(),
+  reviewedAt: (0, import_pg_core.timestamp)("reviewedAt"),
+  reviewedBy: (0, import_pg_core.integer)("reviewedBy"),
   // FK a users (admin que revisó)
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull()
+  createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+  updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull()
 });
-var monthlyDebts = pgTable("monthlyDebts", {
-  id: serial("id").primaryKey(),
-  apartmentId: integer("apartmentId").notNull(),
+var monthlyDebts = (0, import_pg_core.pgTable)("monthlyDebts", {
+  id: (0, import_pg_core.serial)("id").primaryKey(),
+  apartmentId: (0, import_pg_core.integer)("apartmentId").notNull(),
   // FK a apartments
-  chargeId: integer("chargeId"),
+  chargeId: (0, import_pg_core.integer)("chargeId"),
   // FK a charges (para rastrear qué cobro generó esta deuda)
-  month: varchar("month", { length: 7 }).notNull(),
+  month: (0, import_pg_core.varchar)("month", { length: 7 }).notNull(),
   // "2026-03"
-  totalDue: decimal("totalDue", { precision: 10, scale: 2 }).notNull(),
-  totalPaid: decimal("totalPaid", { precision: 10, scale: 2 }).default("0.00"),
-  pendingAmount: decimal("pendingAmount", { precision: 10, scale: 2 }).notNull(),
+  totalDue: (0, import_pg_core.decimal)("totalDue", { precision: 10, scale: 2 }).notNull(),
+  totalPaid: (0, import_pg_core.decimal)("totalPaid", { precision: 10, scale: 2 }).default("0.00"),
+  pendingAmount: (0, import_pg_core.decimal)("pendingAmount", { precision: 10, scale: 2 }).notNull(),
   currency: currencyEnum("currency").default("USD"),
-  isPaid: boolean("isPaid").default(false),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull()
+  isPaid: (0, import_pg_core.boolean)("isPaid").default(false),
+  createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+  updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull()
 });
-var reminders = pgTable("reminders", {
-  id: serial("id").primaryKey(),
-  userId: integer("userId").notNull(),
+var reminders = (0, import_pg_core.pgTable)("reminders", {
+  id: (0, import_pg_core.serial)("id").primaryKey(),
+  userId: (0, import_pg_core.integer)("userId").notNull(),
   // FK a users
-  apartmentId: integer("apartmentId").notNull(),
+  apartmentId: (0, import_pg_core.integer)("apartmentId").notNull(),
   // FK a apartments
-  month: varchar("month", { length: 7 }).notNull(),
+  month: (0, import_pg_core.varchar)("month", { length: 7 }).notNull(),
   // "2026-03"
-  message: text("message"),
-  sentAt: timestamp("sentAt"),
+  message: (0, import_pg_core.text)("message"),
+  sentAt: (0, import_pg_core.timestamp)("sentAt"),
   status: reminderStatusEnum("status").default("pending"),
-  createdAt: timestamp("createdAt").defaultNow().notNull()
+  createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull()
 });
-var auditLog = pgTable("auditLog", {
-  id: serial("id").primaryKey(),
-  userId: integer("userId"),
+var auditLog = (0, import_pg_core.pgTable)("auditLog", {
+  id: (0, import_pg_core.serial)("id").primaryKey(),
+  userId: (0, import_pg_core.integer)("userId"),
   // FK a users (quién hizo la acción)
-  action: varchar("action", { length: 255 }).notNull(),
+  action: (0, import_pg_core.varchar)("action", { length: 255 }).notNull(),
   // "approve_payment", "create_charge", etc.
-  entityType: varchar("entityType", { length: 100 }),
+  entityType: (0, import_pg_core.varchar)("entityType", { length: 100 }),
   // "payment", "charge", "user", etc.
-  entityId: integer("entityId"),
-  details: text("details"),
-  createdAt: timestamp("createdAt").defaultNow().notNull()
+  entityId: (0, import_pg_core.integer)("entityId"),
+  details: (0, import_pg_core.text)("details"),
+  createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull()
 });
-var notifications = pgTable("notifications", {
-  id: serial("id").primaryKey(),
-  userId: integer("userId").notNull(),
+var notifications = (0, import_pg_core.pgTable)("notifications", {
+  id: (0, import_pg_core.serial)("id").primaryKey(),
+  userId: (0, import_pg_core.integer)("userId").notNull(),
   // FK a users (destinatario)
   type: notificationTypeEnum("type").notNull(),
-  title: varchar("title", { length: 255 }).notNull(),
-  message: text("message").notNull(),
-  relatedEntityType: varchar("relatedEntityType", { length: 100 }),
+  title: (0, import_pg_core.varchar)("title", { length: 255 }).notNull(),
+  message: (0, import_pg_core.text)("message").notNull(),
+  relatedEntityType: (0, import_pg_core.varchar)("relatedEntityType", { length: 100 }),
   // "payment", "debt", etc.
-  relatedEntityId: integer("relatedEntityId"),
-  isRead: boolean("isRead").default(false),
-  actionUrl: varchar("actionUrl", { length: 512 }),
+  relatedEntityId: (0, import_pg_core.integer)("relatedEntityId"),
+  isRead: (0, import_pg_core.boolean)("isRead").default(false),
+  actionUrl: (0, import_pg_core.varchar)("actionUrl", { length: 512 }),
   // URL para la acción
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  readAt: timestamp("readAt")
+  createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+  readAt: (0, import_pg_core.timestamp)("readAt")
 });
 
 // server/db.ts
@@ -360,7 +377,7 @@ var _db = null;
 async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = (0, import_postgres_js.drizzle)(process.env.DATABASE_URL);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -371,13 +388,13 @@ async function getDb() {
 async function getUserById(id) {
   const db = await getDb();
   if (!db) return void 0;
-  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  const result = await db.select().from(users).where((0, import_drizzle_orm.eq)(users.id, id)).limit(1);
   return result.length > 0 ? result[0] : void 0;
 }
 async function getUserByEmail(email) {
   const db = await getDb();
   if (!db) return void 0;
-  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  const result = await db.select().from(users).where((0, import_drizzle_orm.eq)(users.email, email)).limit(1);
   return result.length > 0 ? result[0] : void 0;
 }
 async function createUserFromSupabase(data) {
@@ -409,7 +426,7 @@ async function getCondominiumConfig() {
 async function updateCondominiumConfig(data) {
   const db = await getDb();
   if (!db) return null;
-  const result = await db.update(condominiumConfig).set(data).where(eq(condominiumConfig.id, 1));
+  const result = await db.update(condominiumConfig).set(data).where((0, import_drizzle_orm.eq)(condominiumConfig.id, 1));
   return result;
 }
 async function initializeCondominiumConfig() {
@@ -468,30 +485,30 @@ async function getAllApartments() {
 async function getApartmentsByFloor(floorId) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(apartments).where(eq(apartments.floorId, floorId));
+  return await db.select().from(apartments).where((0, import_drizzle_orm.eq)(apartments.floorId, floorId));
 }
 async function getAllCharges() {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(charges).where(eq(charges.isActive, true));
+  return await db.select().from(charges).where((0, import_drizzle_orm.eq)(charges.isActive, true));
 }
 async function createCharge(data) {
   const db = await getDb();
   if (!db) return null;
   await db.insert(charges).values(data);
-  const created = await db.select().from(charges).where(eq(charges.name, data.name || "")).orderBy(desc(charges.createdAt)).limit(1);
+  const created = await db.select().from(charges).where((0, import_drizzle_orm.eq)(charges.name, data.name || "")).orderBy((0, import_drizzle_orm.desc)(charges.createdAt)).limit(1);
   return created && created.length > 0 ? created[0] : null;
 }
 async function updateCharge(id, data) {
   const db = await getDb();
   if (!db) return null;
-  return await db.update(charges).set(data).where(eq(charges.id, id));
+  return await db.update(charges).set(data).where((0, import_drizzle_orm.eq)(charges.id, id));
 }
 async function deleteCharge(id) {
   const db = await getDb();
   if (!db) return null;
-  await db.delete(monthlyDebts).where(eq(monthlyDebts.chargeId, id));
-  return await db.update(charges).set({ isActive: false }).where(eq(charges.id, id));
+  await db.delete(monthlyDebts).where((0, import_drizzle_orm.eq)(monthlyDebts.chargeId, id));
+  return await db.update(charges).set({ isActive: false }).where((0, import_drizzle_orm.eq)(charges.id, id));
 }
 async function createPayment(data) {
   const db = await getDb();
@@ -571,7 +588,7 @@ async function updatePaymentStatus(id, status, reviewedBy, notes) {
   if (notes) {
     data.notes = notes;
   }
-  return await db.update(payments).set(data).where(eq(payments.id, id));
+  return await db.update(payments).set(data).where((0, import_drizzle_orm.eq)(payments.id, id));
 }
 async function getDebtsByMonth(month) {
   const db = await getDb();
@@ -621,12 +638,12 @@ async function createReminder(data) {
 async function getPendingReminders() {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(reminders).where(eq(reminders.status, "pending"));
+  return await db.select().from(reminders).where((0, import_drizzle_orm.eq)(reminders.status, "pending"));
 }
 async function updateReminderStatus(id, status) {
   const db = await getDb();
   if (!db) return null;
-  return await db.update(reminders).set({ status, sentAt: /* @__PURE__ */ new Date() }).where(eq(reminders.id, id));
+  return await db.update(reminders).set({ status, sentAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm.eq)(reminders.id, id));
 }
 async function createAuditLog(data) {
   const db = await getDb();
@@ -641,7 +658,7 @@ async function getAllUsers() {
 async function getUsersByRole(role) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(users).where(eq(users.role, role));
+  return await db.select().from(users).where((0, import_drizzle_orm.eq)(users.role, role));
 }
 async function getPendingUsers() {
   const db = await getDb();
@@ -652,7 +669,7 @@ async function getPendingUsers() {
 async function updateUser(id, data) {
   const db = await getDb();
   if (!db) return null;
-  return await db.update(users).set(data).where(eq(users.id, id));
+  return await db.update(users).set(data).where((0, import_drizzle_orm.eq)(users.id, id));
 }
 function numberToLetter(num) {
   if (num < 1 || num > 26) return num.toString();
@@ -701,7 +718,7 @@ async function generateAllApartmentNames() {
           floor.floorName,
           parseInt(apartment.apartmentNumber)
         );
-        await db.update(apartments).set({ unitName: newName }).where(eq(apartments.id, apartment.id));
+        await db.update(apartments).set({ unitName: newName }).where((0, import_drizzle_orm.eq)(apartments.id, apartment.id));
       }
     }
     return { success: true };
@@ -713,28 +730,28 @@ async function generateAllApartmentNames() {
 async function updateApartmentName(id, name) {
   const db = await getDb();
   if (!db) return null;
-  return await db.update(apartments).set({ unitName: name }).where(eq(apartments.id, id));
+  return await db.update(apartments).set({ unitName: name }).where((0, import_drizzle_orm.eq)(apartments.id, id));
 }
 async function changeUserRole(userId, newRole) {
   const db = await getDb();
   if (!db) return null;
-  return await db.update(users).set({ role: newRole }).where(eq(users.id, userId));
+  return await db.update(users).set({ role: newRole }).where((0, import_drizzle_orm.eq)(users.id, userId));
 }
 async function deleteUser(userId) {
   const db = await getDb();
   if (!db) return null;
-  return await db.delete(users).where(eq(users.id, userId));
+  return await db.delete(users).where((0, import_drizzle_orm.eq)(users.id, userId));
 }
 async function toggleUserActive(userId, isActive) {
   const db = await getDb();
   if (!db) return null;
-  return await db.update(users).set({ isActive }).where(eq(users.id, userId));
+  return await db.update(users).set({ isActive }).where((0, import_drizzle_orm.eq)(users.id, userId));
 }
 async function generateDebtsFromCharge(chargeId) {
   const db = await getDb();
   if (!db) return;
   try {
-    const charge = await db.select().from(charges).where(eq(charges.id, chargeId)).limit(1);
+    const charge = await db.select().from(charges).where((0, import_drizzle_orm.eq)(charges.id, chargeId)).limit(1);
     if (!charge || charge.length === 0) {
       console.error(`[Debt Generation] Charge ${chargeId} not found`);
       return;
@@ -745,9 +762,9 @@ async function generateDebtsFromCharge(chargeId) {
     const chargeAmount = parseFloat(chargeData.amount);
     if (chargeData.apartmentId) {
       const existingDebt = await db.select().from(monthlyDebts).where(
-        and(
-          eq(monthlyDebts.apartmentId, chargeData.apartmentId),
-          eq(monthlyDebts.month, month)
+        (0, import_drizzle_orm.and)(
+          (0, import_drizzle_orm.eq)(monthlyDebts.apartmentId, chargeData.apartmentId),
+          (0, import_drizzle_orm.eq)(monthlyDebts.month, month)
         )
       ).limit(1);
       if (existingDebt && existingDebt.length > 0) {
@@ -757,7 +774,7 @@ async function generateDebtsFromCharge(chargeId) {
         await db.update(monthlyDebts).set({
           totalDue: totalDue.toString(),
           pendingAmount: pendingAmount.toString()
-        }).where(eq(monthlyDebts.id, debt.id));
+        }).where((0, import_drizzle_orm.eq)(monthlyDebts.id, debt.id));
       } else {
         await db.insert(monthlyDebts).values({
           apartmentId: chargeData.apartmentId,
@@ -772,9 +789,9 @@ async function generateDebtsFromCharge(chargeId) {
       const allApartments = await db.select().from(apartments);
       for (const apt of allApartments) {
         const existingDebt = await db.select().from(monthlyDebts).where(
-          and(
-            eq(monthlyDebts.apartmentId, apt.id),
-            eq(monthlyDebts.month, month)
+          (0, import_drizzle_orm.and)(
+            (0, import_drizzle_orm.eq)(monthlyDebts.apartmentId, apt.id),
+            (0, import_drizzle_orm.eq)(monthlyDebts.month, month)
           )
         ).limit(1);
         if (existingDebt && existingDebt.length > 0) {
@@ -784,7 +801,7 @@ async function generateDebtsFromCharge(chargeId) {
           await db.update(monthlyDebts).set({
             totalDue: totalDue.toString(),
             pendingAmount: pendingAmount.toString()
-          }).where(eq(monthlyDebts.id, debt.id));
+          }).where((0, import_drizzle_orm.eq)(monthlyDebts.id, debt.id));
         } else {
           await db.insert(monthlyDebts).values({
             apartmentId: apt.id,
@@ -983,11 +1000,11 @@ async function getUnreadNotifications(userId) {
   const { eq: drizzleEq } = await import("drizzle-orm");
   try {
     return await db.select().from(notifications).where(
-      and(
+      (0, import_drizzle_orm.and)(
         drizzleEq(notifications.userId, userId),
         drizzleEq(notifications.isRead, false)
       )
-    ).orderBy(desc(notifications.createdAt));
+    ).orderBy((0, import_drizzle_orm.desc)(notifications.createdAt));
   } catch (error) {
     console.error("[Notifications] Error getting unread notifications:", error);
     return [];
@@ -998,7 +1015,7 @@ async function getUserNotifications(userId, limit = 50) {
   if (!db) return [];
   const { eq: drizzleEq } = await import("drizzle-orm");
   try {
-    return await db.select().from(notifications).where(drizzleEq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)).limit(limit);
+    return await db.select().from(notifications).where(drizzleEq(notifications.userId, userId)).orderBy((0, import_drizzle_orm.desc)(notifications.createdAt)).limit(limit);
   } catch (error) {
     console.error("[Notifications] Error getting user notifications:", error);
     return [];
@@ -1027,7 +1044,7 @@ async function markAllNotificationsAsRead(userId) {
       isRead: true,
       readAt: /* @__PURE__ */ new Date()
     }).where(
-      and(
+      (0, import_drizzle_orm.and)(
         drizzleEq(notifications.userId, userId),
         drizzleEq(notifications.isRead, false)
       )
@@ -1043,7 +1060,7 @@ async function countUnreadNotifications(userId) {
   const { eq: drizzleEq, sql } = await import("drizzle-orm");
   try {
     const result = await db.select({ count: sql`COUNT(*)` }).from(notifications).where(
-      and(
+      (0, import_drizzle_orm.and)(
         drizzleEq(notifications.userId, userId),
         drizzleEq(notifications.isRead, false)
       )
@@ -1193,7 +1210,7 @@ async function getMonthlyDebtsSummary(month) {
   if (!db) return [];
   const { eq: eq2 } = await import("drizzle-orm");
   try {
-    return await db.select().from(monthlyDebts).where(eq2(monthlyDebts.month, month)).orderBy(desc(monthlyDebts.pendingAmount));
+    return await db.select().from(monthlyDebts).where(eq2(monthlyDebts.month, month)).orderBy((0, import_drizzle_orm.desc)(monthlyDebts.pendingAmount));
   } catch (error) {
     console.error("[Reports] Error getting monthly debts summary:", error);
     return [];
@@ -1213,7 +1230,7 @@ async function getPaymentsByStatus(status, month) {
         )
       );
     }
-    return await query.orderBy(desc(payments.submittedAt));
+    return await query.orderBy((0, import_drizzle_orm.desc)(payments.submittedAt));
   } catch (error) {
     console.error("[Reports] Error getting payments by status:", error);
     return [];
@@ -1321,12 +1338,12 @@ async function getAllApartmentsWithDebtStatus(month, sortBy = "floor") {
 }
 
 // server/exports.ts
-import PDFDocument from "pdfkit";
-import ExcelJS from "exceljs";
+var import_pdfkit = __toESM(require("pdfkit"), 1);
+var import_exceljs = __toESM(require("exceljs"), 1);
 async function generatePDF(data) {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ margin: 40 });
+      const doc = new import_pdfkit.default({ margin: 40 });
       const chunks = [];
       doc.on("data", (chunk) => chunks.push(chunk));
       doc.on("end", () => resolve(Buffer.concat(chunks)));
@@ -1401,7 +1418,7 @@ async function generatePDF(data) {
   });
 }
 async function generateExcel(data) {
-  const workbook = new ExcelJS.Workbook();
+  const workbook = new import_exceljs.default.Workbook();
   const worksheet = workbook.addWorksheet("Estado de Pagos");
   worksheet.mergeCells("A1:D1");
   const titleCell = worksheet.getCell("A1");
@@ -1463,7 +1480,7 @@ async function generateExcel(data) {
 // server/routers.ts
 var adminProcedure2 = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") {
-    throw new TRPCError2({ code: "FORBIDDEN", message: "Solo administradores pueden acceder" });
+    throw new import_server2.TRPCError({ code: "FORBIDDEN", message: "Solo administradores pueden acceder" });
   }
   return next({ ctx });
 });
@@ -1486,15 +1503,15 @@ var appRouter = router({
       }
       return config;
     }),
-    update: adminProcedure2.input(z2.object({
-      name: z2.string().optional(),
-      floors: z2.number().min(1).max(20).optional(),
-      apartmentsPerFloor: z2.number().min(1).max(50).optional(),
-      baseFee: z2.string().optional(),
-      defaultCurrency: z2.enum(["USD", "VES"]).optional(),
-      exchangeRate: z2.string().optional(),
-      reminderDay: z2.number().min(1).max(28).optional(),
-      apartmentNamePattern: z2.string().optional()
+    update: adminProcedure2.input(import_zod2.z.object({
+      name: import_zod2.z.string().optional(),
+      floors: import_zod2.z.number().min(1).max(20).optional(),
+      apartmentsPerFloor: import_zod2.z.number().min(1).max(50).optional(),
+      baseFee: import_zod2.z.string().optional(),
+      defaultCurrency: import_zod2.z.enum(["USD", "VES"]).optional(),
+      exchangeRate: import_zod2.z.string().optional(),
+      reminderDay: import_zod2.z.number().min(1).max(28).optional(),
+      apartmentNamePattern: import_zod2.z.string().optional()
     })).mutation(async ({ input }) => {
       const result = await updateCondominiumConfig(input);
       return await getCondominiumConfig();
@@ -1507,7 +1524,7 @@ var appRouter = router({
       const result = await generateAllApartmentNames();
       return result || { success: false };
     }),
-    getPatternExamples: adminProcedure2.input(z2.object({ pattern: z2.string() })).query(async ({ input }) => {
+    getPatternExamples: adminProcedure2.input(import_zod2.z.object({ pattern: import_zod2.z.string() })).query(async ({ input }) => {
       const config = await getCondominiumConfig();
       if (!config) return [];
       return generatePatternExamples(input.pattern, config.floors || 5, config.apartmentsPerFloor || 6);
@@ -1531,12 +1548,12 @@ var appRouter = router({
     list: publicProcedure.query(async () => {
       return await getAllApartments();
     }),
-    byFloor: publicProcedure.input(z2.object({ floorId: z2.number() })).query(async ({ input }) => {
+    byFloor: publicProcedure.input(import_zod2.z.object({ floorId: import_zod2.z.number() })).query(async ({ input }) => {
       return await getApartmentsByFloor(input.floorId);
     }),
-    updateName: adminProcedure2.input(z2.object({
-      apartmentId: z2.number(),
-      name: z2.string()
+    updateName: adminProcedure2.input(import_zod2.z.object({
+      apartmentId: import_zod2.z.number(),
+      name: import_zod2.z.string()
     })).mutation(async ({ input, ctx }) => {
       await updateApartmentName(input.apartmentId, input.name);
       await createAuditLog({
@@ -1554,13 +1571,13 @@ var appRouter = router({
     list: publicProcedure.query(async () => {
       return await getAllCharges();
     }),
-    create: adminProcedure2.input(z2.object({
-      name: z2.string().min(1),
-      description: z2.string().optional(),
-      amount: z2.string(),
-      currency: z2.enum(["USD", "VES"]).default("USD"),
-      isRecurring: z2.boolean().default(true),
-      apartmentId: z2.number().optional()
+    create: adminProcedure2.input(import_zod2.z.object({
+      name: import_zod2.z.string().min(1),
+      description: import_zod2.z.string().optional(),
+      amount: import_zod2.z.string(),
+      currency: import_zod2.z.enum(["USD", "VES"]).default("USD"),
+      isRecurring: import_zod2.z.boolean().default(true),
+      apartmentId: import_zod2.z.number().optional()
     })).mutation(async ({ input, ctx }) => {
       const config = await getCondominiumConfig();
       const exchangeRate = config ? parseFloat(config.exchangeRate || "1") : 1;
@@ -1588,37 +1605,37 @@ var appRouter = router({
       });
       return { success: true };
     }),
-    update: adminProcedure2.input(z2.object({
-      id: z2.number(),
-      name: z2.string().optional(),
-      description: z2.string().optional(),
-      amount: z2.string().optional(),
-      currency: z2.enum(["USD", "VES"]).optional(),
-      isRecurring: z2.boolean().optional(),
-      apartmentId: z2.number().optional()
+    update: adminProcedure2.input(import_zod2.z.object({
+      id: import_zod2.z.number(),
+      name: import_zod2.z.string().optional(),
+      description: import_zod2.z.string().optional(),
+      amount: import_zod2.z.string().optional(),
+      currency: import_zod2.z.enum(["USD", "VES"]).optional(),
+      isRecurring: import_zod2.z.boolean().optional(),
+      apartmentId: import_zod2.z.number().optional()
     })).mutation(async ({ input }) => {
       const { id, ...data } = input;
       await updateCharge(id, data);
       return { success: true };
     }),
-    delete: adminProcedure2.input(z2.object({ id: z2.number() })).mutation(async ({ input }) => {
+    delete: adminProcedure2.input(import_zod2.z.object({ id: import_zod2.z.number() })).mutation(async ({ input }) => {
       await deleteCharge(input.id);
       return { success: true };
     })
   }),
   // ===== GESTIÓN DE PAGOS =====
   payments: router({
-    submit: protectedProcedure.input(z2.object({
-      month: z2.string(),
+    submit: protectedProcedure.input(import_zod2.z.object({
+      month: import_zod2.z.string(),
       // "2026-03"
-      voucherNumber: z2.string().optional(),
-      voucherImage: z2.string().optional(),
+      voucherNumber: import_zod2.z.string().optional(),
+      voucherImage: import_zod2.z.string().optional(),
       // Base64
-      amount: z2.string(),
-      currency: z2.enum(["USD", "VES"])
+      amount: import_zod2.z.string(),
+      currency: import_zod2.z.enum(["USD", "VES"])
     })).mutation(async ({ input, ctx }) => {
       if (!ctx.user.apartmentId) {
-        throw new TRPCError2({ code: "BAD_REQUEST", message: "Usuario no tiene apartamento asignado" });
+        throw new import_server2.TRPCError({ code: "BAD_REQUEST", message: "Usuario no tiene apartamento asignado" });
       }
       const result = await createPayment({
         userId: ctx.user.id,
@@ -1641,13 +1658,13 @@ var appRouter = router({
     pending: adminProcedure2.query(async () => {
       return await getPendingPayments();
     }),
-    approve: adminProcedure2.input(z2.object({
-      id: z2.number(),
-      notes: z2.string().optional()
+    approve: adminProcedure2.input(import_zod2.z.object({
+      id: import_zod2.z.number(),
+      notes: import_zod2.z.string().optional()
     })).mutation(async ({ input, ctx }) => {
       const payment = await getPaymentById(input.id);
       if (!payment) {
-        throw new TRPCError2({ code: "NOT_FOUND", message: "Pago no encontrado" });
+        throw new import_server2.TRPCError({ code: "NOT_FOUND", message: "Pago no encontrado" });
       }
       const result = await approvePaymentWithValidations(
         input.id,
@@ -1655,7 +1672,7 @@ var appRouter = router({
         input.notes
       );
       if (!result.success) {
-        throw new TRPCError2({
+        throw new import_server2.TRPCError({
           code: "BAD_REQUEST",
           message: result.message
         });
@@ -1672,13 +1689,13 @@ var appRouter = router({
         appliedAmount: result.appliedAmount
       };
     }),
-    reject: adminProcedure2.input(z2.object({
-      id: z2.number(),
-      notes: z2.string()
+    reject: adminProcedure2.input(import_zod2.z.object({
+      id: import_zod2.z.number(),
+      notes: import_zod2.z.string()
     })).mutation(async ({ input, ctx }) => {
       const payment = await getPaymentById(input.id);
       if (!payment) {
-        throw new TRPCError2({ code: "NOT_FOUND", message: "Pago no encontrado" });
+        throw new import_server2.TRPCError({ code: "NOT_FOUND", message: "Pago no encontrado" });
       }
       await updatePaymentStatus(input.id, "rejected", ctx.user.id, input.notes);
       await notifyPaymentRejected(
@@ -1695,9 +1712,9 @@ var appRouter = router({
       });
       return { success: true };
     }),
-    byApartment: protectedProcedure.input(z2.object({
-      apartmentId: z2.number(),
-      month: z2.string().optional()
+    byApartment: protectedProcedure.input(import_zod2.z.object({
+      apartmentId: import_zod2.z.number(),
+      month: import_zod2.z.string().optional()
     })).query(async ({ input }) => {
       return await getPaymentsByApartment(input.apartmentId, input.month);
     }),
@@ -1705,18 +1722,18 @@ var appRouter = router({
       if (!ctx.user.apartmentId) return [];
       return await getPaymentsByApartment(ctx.user.apartmentId);
     }),
-    uploadVoucher: protectedProcedure.input(z2.object({
-      paymentId: z2.number(),
-      fileData: z2.string(),
-      fileName: z2.string(),
-      mimeType: z2.string()
+    uploadVoucher: protectedProcedure.input(import_zod2.z.object({
+      paymentId: import_zod2.z.number(),
+      fileData: import_zod2.z.string(),
+      fileName: import_zod2.z.string(),
+      mimeType: import_zod2.z.string()
     })).mutation(async ({ input, ctx }) => {
       const payment = await getPaymentById(input.paymentId);
       if (!payment) {
-        throw new TRPCError2({ code: "NOT_FOUND", message: "Pago no encontrado" });
+        throw new import_server2.TRPCError({ code: "NOT_FOUND", message: "Pago no encontrado" });
       }
       if (payment.userId !== ctx.user.id && ctx.user.role !== "admin") {
-        throw new TRPCError2({ code: "FORBIDDEN", message: "No tienes permiso para subir este comprobante" });
+        throw new import_server2.TRPCError({ code: "FORBIDDEN", message: "No tienes permiso para subir este comprobante" });
       }
       try {
         const fileBuffer = Buffer.from(input.fileData, "base64");
@@ -1735,28 +1752,28 @@ var appRouter = router({
         });
         return { success: true, url: result.url };
       } catch (error) {
-        throw new TRPCError2({
+        throw new import_server2.TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: error instanceof Error ? error.message : "Error al subir comprobante"
         });
       }
     }),
-    getVoucher: protectedProcedure.input(z2.object({ paymentId: z2.number() })).query(async ({ input, ctx }) => {
+    getVoucher: protectedProcedure.input(import_zod2.z.object({ paymentId: import_zod2.z.number() })).query(async ({ input, ctx }) => {
       const payment = await getPaymentById(input.paymentId);
       if (!payment) {
-        throw new TRPCError2({ code: "NOT_FOUND", message: "Pago no encontrado" });
+        throw new import_server2.TRPCError({ code: "NOT_FOUND", message: "Pago no encontrado" });
       }
       if (payment.userId !== ctx.user.id && ctx.user.role !== "admin") {
-        throw new TRPCError2({ code: "FORBIDDEN", message: "No tienes permiso para ver este comprobante" });
+        throw new import_server2.TRPCError({ code: "FORBIDDEN", message: "No tienes permiso para ver este comprobante" });
       }
       const url = await getPaymentVoucherUrl(input.paymentId);
       return { url };
     }),
-    recordManualPayment: adminProcedure2.input(z2.object({
-      apartmentId: z2.number(),
-      amount: z2.number().positive(),
-      month: z2.string(),
-      notes: z2.string().optional()
+    recordManualPayment: adminProcedure2.input(import_zod2.z.object({
+      apartmentId: import_zod2.z.number(),
+      amount: import_zod2.z.number().positive(),
+      month: import_zod2.z.string(),
+      notes: import_zod2.z.string().optional()
     })).mutation(async ({ input, ctx }) => {
       const result = await createPayment({
         apartmentId: input.apartmentId,
@@ -1768,7 +1785,7 @@ var appRouter = router({
         voucherNumber: `MANUAL-${Date.now()}`
       });
       if (!result) {
-        throw new TRPCError2({ code: "INTERNAL_SERVER_ERROR", message: "Error al crear pago" });
+        throw new import_server2.TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error al crear pago" });
       }
       await applyPaymentToDebts(input.apartmentId, input.amount);
       await createAuditLog({
@@ -1782,7 +1799,7 @@ var appRouter = router({
   }),
   // ===== GESTIÓN DE DEUDAS =====
   debts: router({
-    getByMonth: adminProcedure2.input(z2.object({ month: z2.string() })).query(async ({ input }) => {
+    getByMonth: adminProcedure2.input(import_zod2.z.object({ month: import_zod2.z.string() })).query(async ({ input }) => {
       return await getDebtsByMonth(input.month);
     }),
     myDebts: protectedProcedure.query(async ({ ctx }) => {
@@ -1816,12 +1833,12 @@ var appRouter = router({
     list: adminProcedure2.query(async () => {
       return await getAllUsers();
     }),
-    byRole: adminProcedure2.input(z2.object({ role: z2.enum(["admin", "user"]) })).query(async ({ input }) => {
+    byRole: adminProcedure2.input(import_zod2.z.object({ role: import_zod2.z.enum(["admin", "user"]) })).query(async ({ input }) => {
       return await getUsersByRole(input.role);
     }),
-    assignApartment: adminProcedure2.input(z2.object({
-      userId: z2.number(),
-      apartmentId: z2.number()
+    assignApartment: adminProcedure2.input(import_zod2.z.object({
+      userId: import_zod2.z.number(),
+      apartmentId: import_zod2.z.number()
     })).mutation(async ({ input, ctx }) => {
       await updateUser(input.userId, { apartmentId: input.apartmentId });
       await createAuditLog({
@@ -1833,9 +1850,9 @@ var appRouter = router({
       });
       return { success: true };
     }),
-    updateRole: adminProcedure2.input(z2.object({
-      userId: z2.number(),
-      role: z2.enum(["admin", "user"])
+    updateRole: adminProcedure2.input(import_zod2.z.object({
+      userId: import_zod2.z.number(),
+      role: import_zod2.z.enum(["admin", "user"])
     })).mutation(async ({ input, ctx }) => {
       await updateUser(input.userId, { role: input.role });
       await createAuditLog({
@@ -1850,8 +1867,8 @@ var appRouter = router({
     pending: adminProcedure2.query(async () => {
       return await getPendingUsers();
     }),
-    approve: adminProcedure2.input(z2.object({
-      userId: z2.number()
+    approve: adminProcedure2.input(import_zod2.z.object({
+      userId: import_zod2.z.number()
     })).mutation(async ({ input, ctx }) => {
       await updateUser(input.userId, {
         isApproved: true,
@@ -1868,9 +1885,9 @@ var appRouter = router({
       });
       return { success: true };
     }),
-    reject: adminProcedure2.input(z2.object({
-      userId: z2.number(),
-      reason: z2.string()
+    reject: adminProcedure2.input(import_zod2.z.object({
+      userId: import_zod2.z.number(),
+      reason: import_zod2.z.string()
     })).mutation(async ({ input, ctx }) => {
       await updateUser(input.userId, {
         isApproved: false,
@@ -1886,9 +1903,9 @@ var appRouter = router({
       });
       return { success: true };
     }),
-    changeRole: adminProcedure2.input(z2.object({
-      userId: z2.number(),
-      newRole: z2.enum(["admin", "user"])
+    changeRole: adminProcedure2.input(import_zod2.z.object({
+      userId: import_zod2.z.number(),
+      newRole: import_zod2.z.enum(["admin", "user"])
     })).mutation(async ({ input, ctx }) => {
       await changeUserRole(input.userId, input.newRole);
       await createAuditLog({
@@ -1900,8 +1917,8 @@ var appRouter = router({
       });
       return { success: true };
     }),
-    delete: adminProcedure2.input(z2.object({
-      userId: z2.number()
+    delete: adminProcedure2.input(import_zod2.z.object({
+      userId: import_zod2.z.number()
     })).mutation(async ({ input, ctx }) => {
       await deleteUser(input.userId);
       await createAuditLog({
@@ -1913,9 +1930,9 @@ var appRouter = router({
       });
       return { success: true };
     }),
-    toggleActive: adminProcedure2.input(z2.object({
-      userId: z2.number(),
-      isActive: z2.boolean()
+    toggleActive: adminProcedure2.input(import_zod2.z.object({
+      userId: import_zod2.z.number(),
+      isActive: import_zod2.z.boolean()
     })).mutation(async ({ input, ctx }) => {
       await toggleUserActive(input.userId, input.isActive);
       await createAuditLog({
@@ -1930,11 +1947,11 @@ var appRouter = router({
   }),
   // ===== GESTIÓN DE RECORDATORIOS =====
   reminders: router({
-    create: adminProcedure2.input(z2.object({
-      userId: z2.number(),
-      apartmentId: z2.number(),
-      month: z2.string(),
-      message: z2.string()
+    create: adminProcedure2.input(import_zod2.z.object({
+      userId: import_zod2.z.number(),
+      apartmentId: import_zod2.z.number(),
+      month: import_zod2.z.string(),
+      message: import_zod2.z.string()
     })).mutation(async ({ input, ctx }) => {
       const result = await createReminder({
         userId: input.userId,
@@ -1954,7 +1971,7 @@ var appRouter = router({
     pending: adminProcedure2.query(async () => {
       return await getPendingReminders();
     }),
-    markSent: adminProcedure2.input(z2.object({ id: z2.number() })).mutation(async ({ input, ctx }) => {
+    markSent: adminProcedure2.input(import_zod2.z.object({ id: import_zod2.z.number() })).mutation(async ({ input, ctx }) => {
       await updateReminderStatus(input.id, "sent");
       await createAuditLog({
         userId: ctx.user.id,
@@ -1967,8 +1984,8 @@ var appRouter = router({
   }),
   // ===== NOTIFICACIONES =====
   notifications: router({
-    list: protectedProcedure.input(z2.object({
-      limit: z2.number().min(1).max(100).default(50)
+    list: protectedProcedure.input(import_zod2.z.object({
+      limit: import_zod2.z.number().min(1).max(100).default(50)
     })).query(async ({ input, ctx }) => {
       return await getUserNotifications(ctx.user.id, input.limit);
     }),
@@ -1978,11 +1995,11 @@ var appRouter = router({
     unreadCount: protectedProcedure.query(async ({ ctx }) => {
       return await countUnreadNotifications(ctx.user.id);
     }),
-    markAsRead: protectedProcedure.input(z2.object({ id: z2.number() })).mutation(async ({ input, ctx }) => {
+    markAsRead: protectedProcedure.input(import_zod2.z.object({ id: import_zod2.z.number() })).mutation(async ({ input, ctx }) => {
       const notification = await getUserNotifications(ctx.user.id, 1e3);
       const exists = notification.some((n) => n.id === input.id);
       if (!exists) {
-        throw new TRPCError2({ code: "FORBIDDEN", message: "Notificaci\xF3n no encontrada" });
+        throw new import_server2.TRPCError({ code: "FORBIDDEN", message: "Notificaci\xF3n no encontrada" });
       }
       await markNotificationAsRead(input.id);
       return { success: true };
@@ -1994,54 +2011,54 @@ var appRouter = router({
   }),
   // ===== REPORTES =====
   reports: router({
-    monthlyData: protectedProcedure.input(z2.object({
-      apartmentId: z2.number().optional(),
-      month: z2.string()
+    monthlyData: protectedProcedure.input(import_zod2.z.object({
+      apartmentId: import_zod2.z.number().optional(),
+      month: import_zod2.z.string()
     })).query(async ({ input, ctx }) => {
       const apartmentId = input.apartmentId || ctx.user.apartmentId;
       if (!apartmentId) {
-        throw new TRPCError2({ code: "BAD_REQUEST", message: "Apartamento no especificado" });
+        throw new import_server2.TRPCError({ code: "BAD_REQUEST", message: "Apartamento no especificado" });
       }
       if (ctx.user.role !== "admin" && ctx.user.apartmentId !== apartmentId) {
-        throw new TRPCError2({ code: "FORBIDDEN", message: "No tienes permiso para ver este reporte" });
+        throw new import_server2.TRPCError({ code: "FORBIDDEN", message: "No tienes permiso para ver este reporte" });
       }
       const reportData = await getMonthlyReportData(apartmentId, input.month);
       if (!reportData) {
-        throw new TRPCError2({ code: "NOT_FOUND", message: "Reporte no encontrado" });
+        throw new import_server2.TRPCError({ code: "NOT_FOUND", message: "Reporte no encontrado" });
       }
       return reportData;
     }),
     userSummary: protectedProcedure.query(async ({ ctx }) => {
       return await getUserPaymentsSummary(ctx.user.id);
     }),
-    debtsSummary: adminProcedure2.input(z2.object({ month: z2.string() })).query(async ({ input }) => {
+    debtsSummary: adminProcedure2.input(import_zod2.z.object({ month: import_zod2.z.string() })).query(async ({ input }) => {
       return await getMonthlyDebtsSummary(input.month);
     }),
-    paymentsByStatus: adminProcedure2.input(z2.object({
-      status: z2.enum(["pending", "approved", "rejected"]),
-      month: z2.string().optional()
+    paymentsByStatus: adminProcedure2.input(import_zod2.z.object({
+      status: import_zod2.z.enum(["pending", "approved", "rejected"]),
+      month: import_zod2.z.string().optional()
     })).query(async ({ input }) => {
       return await getPaymentsByStatus(input.status, input.month);
     }),
-    exportJSON: protectedProcedure.input(z2.object({
-      apartmentId: z2.number().optional(),
-      month: z2.string()
+    exportJSON: protectedProcedure.input(import_zod2.z.object({
+      apartmentId: import_zod2.z.number().optional(),
+      month: import_zod2.z.string()
     })).query(async ({ input, ctx }) => {
       const apartmentId = input.apartmentId || ctx.user.apartmentId;
       if (!apartmentId) {
-        throw new TRPCError2({ code: "BAD_REQUEST", message: "Apartamento no especificado" });
+        throw new import_server2.TRPCError({ code: "BAD_REQUEST", message: "Apartamento no especificado" });
       }
       if (ctx.user.role !== "admin" && ctx.user.apartmentId !== apartmentId) {
-        throw new TRPCError2({ code: "FORBIDDEN", message: "No tienes permiso para exportar este reporte" });
+        throw new import_server2.TRPCError({ code: "FORBIDDEN", message: "No tienes permiso para exportar este reporte" });
       }
       const reportJSON = await generateReportJSON(apartmentId, input.month);
       if (!reportJSON) {
-        throw new TRPCError2({ code: "NOT_FOUND", message: "Reporte no encontrado" });
+        throw new import_server2.TRPCError({ code: "NOT_FOUND", message: "Reporte no encontrado" });
       }
       return reportJSON;
     }),
-    paymentStatusExport: adminProcedure2.input(z2.object({
-      month: z2.string().optional()
+    paymentStatusExport: adminProcedure2.input(import_zod2.z.object({
+      month: import_zod2.z.string().optional()
     })).query(async ({ input }) => {
       const month = input.month || (/* @__PURE__ */ new Date()).toISOString().slice(0, 7);
       const sortBy = "floor";
@@ -2065,8 +2082,8 @@ var appRouter = router({
         }
       };
     }),
-    downloadPDF: adminProcedure2.input(z2.object({
-      month: z2.string().optional()
+    downloadPDF: adminProcedure2.input(import_zod2.z.object({
+      month: import_zod2.z.string().optional()
     })).query(async ({ input }) => {
       const month = input.month || (/* @__PURE__ */ new Date()).toISOString().slice(0, 7);
       const sortBy = "floor";
@@ -2097,8 +2114,8 @@ var appRouter = router({
       });
       return { buffer: pdfBuffer.toString("base64"), filename: `Estado-Pagos-${month}.pdf` };
     }),
-    downloadExcel: adminProcedure2.input(z2.object({
-      month: z2.string().optional()
+    downloadExcel: adminProcedure2.input(import_zod2.z.object({
+      month: import_zod2.z.string().optional()
     })).query(async ({ input }) => {
       const month = input.month || (/* @__PURE__ */ new Date()).toISOString().slice(0, 7);
       const sortBy = "floor";
@@ -2175,17 +2192,14 @@ async function createContext(opts) {
 }
 
 // api/_entry.ts
-var app = express();
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+var app = (0, import_express.default)();
+app.use(import_express.default.json({ limit: "50mb" }));
+app.use(import_express.default.urlencoded({ limit: "50mb", extended: true }));
 app.use(
   "/api/trpc",
-  createExpressMiddleware({
+  (0, import_express2.createExpressMiddleware)({
     router: appRouter,
     createContext
   })
 );
 var entry_default = app;
-export {
-  entry_default as default
-};

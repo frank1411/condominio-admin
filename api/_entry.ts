@@ -20,3 +20,4 @@ app.use(
 );
 
 export default app;
+// For CJS compatibility with Vercel
