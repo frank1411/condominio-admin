@@ -1,5 +1,7 @@
 import "dotenv/config";
 import express from "express";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -29,8 +31,23 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+
+  // Security headers (Helmet)
+  app.use(helmet());
+
+  // Rate limiting — 100 requests per 15 min per IP
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Demasiadas solicitudes. Intenta de nuevo en 15 minutos." },
+  });
+  app.use(limiter);
+
   // Configure body parser with larger size limit for file uploads (base64 vouchers ~5-7MB)
   app.use(express.json({ limit: "10mb" }));
+
   // tRPC API
   app.use(
     "/api/trpc",
@@ -39,6 +56,7 @@ async function startServer() {
       createContext,
     })
   );
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
