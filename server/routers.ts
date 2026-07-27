@@ -6,6 +6,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import * as db from "./db";
 import { generatePDF, generateExcel } from "./exports";
+import { verifySupabaseToken } from "./_core/supabase";
 
 // Procedimiento solo para administradores
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -39,6 +40,24 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+
+    setSessionCookie: publicProcedure
+      .input(z.object({ accessToken: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const supabaseUser = await verifySupabaseToken(input.accessToken);
+        if (!supabaseUser) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Token inválido o expirado",
+          });
+        }
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, input.accessToken, {
+          ...cookieOptions,
+          maxAge: 60 * 60 * 24 * 7, // 7 días
+        });
+        return { success: true } as const;
+      }),
   }),
 
   // ===== CONFIGURACIÓN DEL CONDOMINIO =====
