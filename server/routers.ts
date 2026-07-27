@@ -19,7 +19,21 @@ export const appRouter = router({
   system: systemRouter,
   
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(opts => {
+      const user = opts.ctx.user;
+      if (!user) return null;
+      // Safe DTO — no exponer campos internos
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        apartmentId: user.apartmentId,
+        approvalStatus: user.approvalStatus,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+      };
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
