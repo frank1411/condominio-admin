@@ -1,9 +1,0 @@
-{
-  "query": "CREATE TABLE `notifications` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`userId` int NOT NULL,\n\t`type` enum('payment_approved','payment_rejected','payment_received','debt_created','debt_paid','reminder','system') NOT NULL,\n\t`title` varchar(255) NOT NULL,\n\t`message` text NOT NULL,\n\t`relatedEntityType` varchar(100),\n\t`relatedEntityId` int,\n\t`isRead` boolean DEFAULT false,\n\t`actionUrl` varchar(512),\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`readAt` timestamp,\n\tCONSTRAINT `notifications_id` PRIMARY KEY(`id`)\n);",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user XPnY5WHAoUAmsBG.root --database Y5QQycr7nHpgztoUcfZWDA --execute CREATE TABLE `notifications` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`userId` int NOT NULL,\n\t`type` enum('payment_approved','payment_rejected','payment_received','debt_created','debt_paid','reminder','system') NOT NULL,\n\t`title` varchar(255) NOT NULL,\n\t`message` text NOT NULL,\n\t`relatedEntityType` varchar(100),\n\t`relatedEntityId` int,\n\t`isRead` boolean DEFAULT false,\n\t`actionUrl` varchar(512),\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`readAt` timestamp,\n\tCONSTRAINT `notifications_id` PRIMARY KEY(`id`)\n);",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 262
-}
