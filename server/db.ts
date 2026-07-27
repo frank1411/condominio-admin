@@ -1273,7 +1273,6 @@ export async function uploadPaymentVoucher(
     const db = await getDb();
     if (!db) throw new Error("Database connection failed");
 
-    const { eq } = await import("drizzle-orm");
     await db
       .update(payments)
       .set({
@@ -1297,7 +1296,6 @@ export async function getPaymentVoucherUrl(paymentId: number): Promise<string | 
   const db = await getDb();
   if (!db) return null;
 
-  const { eq } = await import("drizzle-orm");
   
   try {
     const payment = await db
@@ -1320,7 +1318,6 @@ export async function deletePaymentVoucher(paymentId: number): Promise<boolean> 
   const db = await getDb();
   if (!db) return false;
 
-  const { eq } = await import("drizzle-orm");
   
   try {
     // Obtener clave del archivo
@@ -1377,7 +1374,6 @@ export async function getMonthlyReportData(apartmentId: number, month: string) {
   const db = await getDb();
   if (!db) return null;
 
-  const { eq, and, asc, desc } = await import("drizzle-orm");
 
   try {
     // Obtener información del apartamento
@@ -1434,7 +1430,6 @@ export async function getUserPaymentsSummary(userId: number, limit: number = 12)
   const db = await getDb();
   if (!db) return { payments: [], debts: [], totalPaid: "0", totalPending: "0" };
 
-  const { eq, and, asc, desc } = await import("drizzle-orm");
 
   try {
     const user = await db
@@ -1493,7 +1488,6 @@ export async function getMonthlyDebtsSummary(month: string) {
   const db = await getDb();
   if (!db) return [];
 
-  const { eq } = await import("drizzle-orm");
 
   try {
     return await db
@@ -1514,7 +1508,6 @@ export async function getPaymentsByStatus(status: "pending" | "approved" | "reje
   const db = await getDb();
   if (!db) return [];
 
-  const { eq, and } = await import("drizzle-orm");
 
   try {
     let query = db
