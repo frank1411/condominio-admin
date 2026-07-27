@@ -113,4 +113,3 @@ temp/
 client/public/__manus__/version.json
 .vercel
 .env*
-api/index.js
