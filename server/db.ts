@@ -67,7 +67,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     if (user.role !== undefined) {
       values.role = user.role;
       updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
+    } else if (user.openId === process.env.ADMIN_OPEN_ID) {
       values.role = 'admin';
       updateSet.role = 'admin';
     }
@@ -106,6 +106,34 @@ export async function getUserById(id: number) {
   if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createUserFromSupabase(data: { email: string; name: string }) {
+  const db = await getDb();
+  if (!db) return null;
+  try {
+    const result = await db.insert(users).values({
+      openId: `supabase:${data.email}`,
+      email: data.email,
+      name: data.name,
+      loginMethod: "email",
+      role: "user",
+      approvalStatus: "approved",
+      isApproved: true,
+      isActive: true,
+    }).returning();
+    return result[0] ?? null;
+  } catch (error) {
+    console.warn("[Database] Failed to create user from Supabase:", error);
+    return null;
+  }
 }
 
 export async function getCondominiumConfig() {
