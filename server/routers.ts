@@ -309,7 +309,14 @@ export const appRouter = router({
         apartmentId: z.number(),
         month: z.string().optional(),
       }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        // IDOR protection: admin puede ver cualquier apto, usuario solo el suyo
+        if (ctx.user.role !== "admin" && ctx.user.apartmentId !== input.apartmentId) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "No tienes permiso para ver pagos de este apartamento",
+          });
+        }
         return await db.getPaymentsByApartment(input.apartmentId, input.month);
       }),
 
