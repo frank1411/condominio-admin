@@ -1,6 +1,7 @@
-import { eq, and, gte, lte, desc, isNull, asc } from "drizzle-orm";
+import { eq, and, gte, lte, desc, isNull, asc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { TRPCError } from "@trpc/server";
 import { 
   InsertUser, 
   users,
@@ -719,8 +720,12 @@ export async function getPaymentById(id: number) {
   return result.length > 0 ? result[0] : null;
 }
 
-export async function applyPaymentToDebts(apartmentId: number, paymentAmount: number) {
-  const db = await getDb();
+export async function applyPaymentToDebts(
+  apartmentId: number,
+  paymentAmount: number,
+  tx?: any
+) {
+  const db = tx ?? await getDb();
   if (!db) return null;
   
   const { eq: drizzleEq, and } = await import('drizzle-orm');
@@ -788,8 +793,12 @@ export async function applyPaymentToDebts(apartmentId: number, paymentAmount: nu
 /**
  * Validar que el monto del pago no exceda la deuda pendiente total del apartamento
  */
-export async function validatePaymentAmount(apartmentId: number, paymentAmount: number): Promise<{ valid: boolean; reason?: string }> {
-  const db = await getDb();
+export async function validatePaymentAmount(
+  apartmentId: number,
+  paymentAmount: number,
+  tx?: any
+): Promise<{ valid: boolean; reason?: string }> {
+  const db = tx ?? await getDb();
   if (!db) return { valid: false, reason: "Base de datos no disponible" };
   
   const { eq: drizzleEq, and } = await import('drizzle-orm');
@@ -939,76 +948,72 @@ export async function approvePaymentWithValidations(
     return { success: false, message: "Base de datos no disponible" };
   }
   
-  const { eq: drizzleEq } = await import('drizzle-orm');
-  
   try {
-    // 1. Obtener detalles del pago
-    const payment = await db.select().from(payments).where(drizzleEq(payments.id, paymentId));
-    
-    if (payment.length === 0) {
-      return { success: false, message: "Pago no encontrado" };
-    }
-    
-    const paymentData = payment[0];
-    const paymentAmount = parseFloat(paymentData.amount as unknown as string);
-    
-    // 2. Validar que el pago sea del mes actual o anterior
-    const monthValidation = validatePaymentMonth(paymentData.month);
-    if (!monthValidation.valid) {
-      return { success: false, message: monthValidation.reason || "Fecha inválida" };
-    }
-    
-    // 3. Permitir múltiples pagos aprobados en el mismo mes para pagos parciales
-    // Validación eliminada para soportar pagos parciales
-    
-    // 4. Validar que el monto no exceda la deuda pendiente
-    const amountValidation = await validatePaymentAmount(paymentData.apartmentId, paymentAmount);
-    if (!amountValidation.valid) {
-      return { success: false, message: amountValidation.reason || "Monto inválido" };
-    }
-    
-    // 5. Actualizar estado del pago
-    await db.update(payments)
-      .set({
-        status: "approved",
-        reviewedAt: new Date(),
-        reviewedBy,
-        notes: notes || null,
-      })
-      .where(drizzleEq(payments.id, paymentId));
-    
-    // 6. Aplicar liquidación de deudas
-    const liquidationResult = await applyPaymentToDebts(paymentData.apartmentId, paymentAmount);
-    
-    if (!liquidationResult || !liquidationResult.success) {
-      // Revertir cambios si la liquidación falla
-      await db.update(payments)
+    // Transacción ACID: todo o nada con bloqueo de fila
+    return await db.transaction(async (tx) => {
+      // 1. SELECT ... FOR UPDATE — bloquea la fila del pago
+      const [payment]: typeof payments.$inferSelect[] = await tx.execute(
+        sql`SELECT * FROM payments WHERE id = ${paymentId} FOR UPDATE`
+      );
+
+      if (!payment) {
+        return { success: false, message: "Pago no encontrado" };
+      }
+
+      const paymentAmount = parseFloat(payment.amount as unknown as string);
+
+      // 2. Validar mes del pago
+      const monthValidation = validatePaymentMonth(payment.month);
+      if (!monthValidation.valid) {
+        return { success: false, message: monthValidation.reason || "Fecha inválida" };
+      }
+
+      // 3. Validar que el monto no exceda la deuda pendiente (dentro de la tx)
+      const amountValidation = await validatePaymentAmount(payment.apartmentId, paymentAmount, tx);
+      if (!amountValidation.valid) {
+        return { success: false, message: amountValidation.reason || "Monto inválido" };
+      }
+
+      // 4. Actualizar estado del pago
+      await tx.update(payments)
         .set({
-          status: "pending",
-          reviewedAt: null,
-          reviewedBy: null,
-          notes: null,
+          status: "approved",
+          reviewedAt: new Date(),
+          reviewedBy,
+          notes: notes || null,
         })
-        .where(drizzleEq(payments.id, paymentId));
-      
-      return { success: false, message: "Error al liquidar las deudas" };
-    }
-    
-    // 7. Crear log de auditoría
-    await db.insert(auditLog).values({
-      userId: reviewedBy,
-      action: "approve_payment",
-      entityType: "payment",
-      entityId: paymentId,
-      details: `Pago aprobado: $${paymentAmount.toFixed(2)} - ${notes || "Sin notas"}`,
+        .where(eq(payments.id, paymentId));
+
+      // 5. Aplicar liquidación de deudas (dentro de la misma tx)
+      const liquidationResult = await applyPaymentToDebts(payment.apartmentId, paymentAmount, tx);
+
+      if (!liquidationResult || !liquidationResult.success) {
+        // La tx.rollback() ocurre automáticamente si lanzamos un error
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Error al liquidar las deudas — transacción revertida",
+        });
+      }
+
+      // 6. Crear log de auditoría
+      await tx.insert(auditLog).values({
+        userId: reviewedBy,
+        action: "approve_payment",
+        entityType: "payment",
+        entityId: paymentId,
+        details: `Pago aprobado: $${paymentAmount.toFixed(2)} - ${notes || "Sin notas"}`,
+      });
+
+      return {
+        success: true,
+        message: "Pago aprobado exitosamente",
+        appliedAmount: liquidationResult?.appliedAmount,
+      };
     });
-    
-    return {
-      success: true,
-      message: "Pago aprobado exitosamente",
-      appliedAmount: liquidationResult?.appliedAmount
-    };
   } catch (error) {
+    if (error instanceof TRPCError) {
+      return { success: false, message: error.message };
+    }
     console.error("[Payment Approval] Error approving payment:", error);
     return { success: false, message: "Error al aprobar el pago" };
   }
