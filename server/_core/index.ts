@@ -32,8 +32,31 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
-  // Security headers (Helmet)
-  app.use(helmet());
+  // Security headers (Helmet) with strict CSP
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", "data:", "blob:", "https://*.supabase.co"],
+          fontSrc: ["'self'", "data:"],
+          connectSrc: [
+            "'self'",
+            "https://*.supabase.co",
+            "https://*.supabase.com",
+            "wss://*.supabase.co",
+          ],
+          frameSrc: ["'self'"],
+          objectSrc: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"],
+          upgradeInsecureRequests: [],
+        },
+      },
+    })
+  );
 
   // Rate limiting — 100 requests per 15 min per IP
   const limiter = rateLimit({
