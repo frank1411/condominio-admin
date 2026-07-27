@@ -7,7 +7,9 @@ import {
   timestamp, 
   varchar,
   decimal,
-  boolean
+  boolean,
+  index,
+  uniqueIndex
 } from "drizzle-orm/pg-core";
 
 // ===== ENUMS =====
@@ -144,7 +146,11 @@ export const payments = pgTable("payments", {
   reviewedBy: integer("reviewedBy"), // FK a users (admin que revisó)
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_payments_apartment_month").on(table.apartmentId, table.month),
+  index("idx_payments_user_month").on(table.userId, table.month),
+  index("idx_payments_status_created").on(table.status, table.createdAt),
+]);
 
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
@@ -165,7 +171,11 @@ export const monthlyDebts = pgTable("monthlyDebts", {
   isPaid: boolean("isPaid").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_debts_apartment_month").on(table.apartmentId, table.month),
+  index("idx_debts_month").on(table.month),
+  index("idx_debts_charge_id").on(table.chargeId),
+]);
 
 export type MonthlyDebt = typeof monthlyDebts.$inferSelect;
 export type InsertMonthlyDebt = typeof monthlyDebts.$inferInsert;
@@ -200,7 +210,10 @@ export const auditLog = pgTable("auditLog", {
   entityId: integer("entityId"),
   details: text("details"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_auditlog_user_created").on(table.userId, table.createdAt),
+  index("idx_auditlog_action").on(table.action),
+]);
 
 export type AuditLog = typeof auditLog.$inferSelect;
 export type InsertAuditLog = typeof auditLog.$inferInsert;
@@ -221,7 +234,9 @@ export const notifications = pgTable("notifications", {
   actionUrl: varchar("actionUrl", { length: 512 }), // URL para la acción
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   readAt: timestamp("readAt"),
-});
+}, (table) => [
+  index("idx_notif_user_read_created").on(table.userId, table.isRead, table.createdAt),
+]);
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;

@@ -8,6 +8,13 @@
       "when": 1785182173295,
       "tag": "0000_purple_gamora",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785189425059,
+      "tag": "0001_gorgeous_galactus",
+      "breakpoints": true
     }
   ]
 }
