@@ -1,5 +1,10 @@
 import { drizzle } from "drizzle-orm/postgres-js";
+import { createLogger } from "../_core/logger";
+
+const log = createLogger("client");
 import postgres from "postgres";
+
+import { createLogger } from "../_core/logger";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pgClient: ReturnType<typeof postgres> | null = null;
@@ -17,7 +22,7 @@ export async function getDb() {
       });
       _db = drizzle(_pgClient);
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      log.warn("[Database] Failed to connect:", error);
       _db = null;
     }
   }

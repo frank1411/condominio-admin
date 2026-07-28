@@ -1,4 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
+import { createLogger } from "../_core/logger";
+
+const log = createLogger("payments");
 import { TRPCError } from "@trpc/server";
 import { apartments, auditLog, monthlyDebts, payments } from "../../drizzle/schema";
 import { getDb } from "./client";
@@ -90,7 +93,7 @@ export async function getPendingPayments(limit: number = 20, offset: number = 0)
     
     return { data, total: data.length };
   } catch (error) {
-    console.error("[Payments] Error fetching pending payments:", error);
+    log.error("[Payments] Error fetching pending payments:", error);
     return { data: [], total: 0 };
   }
 }
@@ -187,7 +190,7 @@ export async function applyPaymentToDebts(
     
     return { success: true, appliedAmount: appliedTotal };
   } catch (error) {
-    console.error("[Payment Liquidation] Error applying payment to debts:", error);
+    log.error("[Payment Liquidation] Error applying payment to debts:", error);
     return { success: false, appliedAmount: 0 };
   }
 }
@@ -234,7 +237,7 @@ export async function validatePaymentAmount(
     
     return { valid: true };
   } catch (error) {
-    console.error("[Payment Validation] Error validating payment amount:", error);
+    log.error("[Payment Validation] Error validating payment amount:", error);
     return { valid: false, reason: "Error al validar el monto" };
   }
 }
@@ -280,7 +283,7 @@ export async function checkDuplicatePayment(apartmentId: number, month: string, 
     
     return { isDuplicate: false };
   } catch (error) {
-    console.error("[Payment Validation] Error checking duplicate payment:", error);
+    log.error("[Payment Validation] Error checking duplicate payment:", error);
     return { isDuplicate: false };
   }
 }
@@ -423,7 +426,7 @@ export async function approvePaymentWithValidations(
     if (error instanceof TRPCError) {
       return { success: false, message: error.message };
     }
-    console.error("[Payment Approval] Error approving payment:", error);
+    log.error("[Payment Approval] Error approving payment:", error);
     return { success: false, message: "Error al aprobar el pago" };
   }
 }
@@ -490,7 +493,7 @@ export async function uploadPaymentVoucher(
 
     return { url: publicUrl, key: s3Key };
   } catch (error) {
-    console.error("[S3] Error uploading voucher:", error);
+    log.error("[S3] Error uploading voucher:", error);
     throw error;
   }
 }
@@ -513,7 +516,7 @@ export async function getPaymentVoucherUrl(paymentId: number): Promise<string | 
 
     return payment[0]?.voucherImageUrl || null;
   } catch (error) {
-    console.error("[S3] Error getting voucher URL:", error);
+    log.error("[S3] Error getting voucher URL:", error);
     return null;
   }
 }
@@ -554,7 +557,7 @@ export async function deletePaymentVoucher(paymentId: number): Promise<boolean> 
 
     return true;
   } catch (error) {
-    console.error("[S3] Error deleting voucher:", error);
+    log.error("[S3] Error deleting voucher:", error);
     return false;
   }
 }

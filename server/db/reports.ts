@@ -1,9 +1,14 @@
 import { and, asc, eq, sql } from "drizzle-orm";
+import { createLogger } from "../_core/logger";
+
+const log = createLogger("reports");
 import { payments, monthlyDebts, apartments, charges } from "../../drizzle/schema";
 import { getDb } from "./client";
 import { getCondominiumConfig } from "./condominium";
 import { getUserById } from "./users";
 import { getDebtsByMonth } from "./debts";
+
+import { createLogger } from "../_core/logger";
 
 export async function getMonthlyReportData(apartmentId: number, month: string) {
   const db = await getDb();
@@ -53,7 +58,7 @@ export async function getMonthlyReportData(apartmentId: number, month: string) {
       month,
     };
   } catch (error) {
-    console.error("[Reports] Error getting monthly report data:", error);
+    log.error("[Reports] Error getting monthly report data:", error);
     return null;
   }
 }
@@ -111,7 +116,7 @@ export async function getUserPaymentsSummary(userId: number, limit: number = 12)
       totalPending: totalPending.toFixed(2),
     };
   } catch (error) {
-    console.error("[Reports] Error getting user payments summary:", error);
+    log.error("[Reports] Error getting user payments summary:", error);
     return { payments: [], debts: [], totalPaid: "0", totalPending: "0" };
   }
 }
@@ -131,7 +136,7 @@ export async function getMonthlyDebtsSummary(month: string) {
       .where(eq(monthlyDebts.month, month))
       .orderBy(desc(monthlyDebts.pendingAmount));
   } catch (error) {
-    console.error("[Reports] Error getting monthly debts summary:", error);
+    log.error("[Reports] Error getting monthly debts summary:", error);
     return [];
   }
 }
@@ -164,7 +169,7 @@ export async function getPaymentsByStatus(status: "pending" | "approved" | "reje
 
     return await query.orderBy(desc(payments.submittedAt));
   } catch (error) {
-    console.error("[Reports] Error getting payments by status:", error);
+    log.error("[Reports] Error getting payments by status:", error);
     return [];
   }
 }

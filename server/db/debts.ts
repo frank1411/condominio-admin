@@ -1,4 +1,7 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
+import { createLogger } from "../_core/logger";
+
+const log = createLogger("debts");
 import { apartments, charges, floors, monthlyDebts } from "../../drizzle/schema";
 import { getDb } from "./client";
 import { getUserById } from "./users";
@@ -90,7 +93,7 @@ export async function generateDebtsFromCharge(chargeId: number) {
     // Obtener el cobro
     const charge = await db.select().from(charges).where(eq(charges.id, chargeId)).limit(1);
     if (!charge || charge.length === 0) {
-      console.error(`[Debt Generation] Charge ${chargeId} not found`);
+      log.error(`[Debt Generation] Charge ${chargeId} not found`);
       return;
     }
 
@@ -190,9 +193,9 @@ export async function generateDebtsFromCharge(chargeId: number) {
       }
     }
 
-    console.log(`[Debt Generation] Successfully generated debts for charge ${chargeId}`);
+    log.info(`[Debt Generation] Successfully generated debts for charge ${chargeId}`);
   } catch (error) {
-    console.error(`[Debt Generation] Error generating debts for charge ${chargeId}:`, error);
+    log.error(`[Debt Generation] Error generating debts for charge ${chargeId}:`, error);
   }
 }
 

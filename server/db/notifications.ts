@@ -1,4 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
+import { createLogger } from "../_core/logger";
+
+const log = createLogger("notifications");
 import { notifications } from "../../drizzle/schema";
 import { getDb } from "./client";
 
@@ -9,7 +12,7 @@ export async function createNotification(data: typeof notifications.$inferInsert
   try {
     return await db.insert(notifications).values(data);
   } catch (error) {
-    console.error("[Notifications] Error creating notification:", error);
+    log.error("[Notifications] Error creating notification:", error);
     return null;
   }
 }
@@ -36,7 +39,7 @@ export async function getUnreadNotifications(userId: number) {
       )
       .orderBy(desc(notifications.createdAt));
   } catch (error) {
-    console.error("[Notifications] Error getting unread notifications:", error);
+    log.error("[Notifications] Error getting unread notifications:", error);
     return [];
   }
 }
@@ -59,7 +62,7 @@ export async function getUserNotifications(userId: number, limit: number = 50) {
       .orderBy(desc(notifications.createdAt))
       .limit(limit);
   } catch (error) {
-    console.error("[Notifications] Error getting user notifications:", error);
+    log.error("[Notifications] Error getting user notifications:", error);
     return [];
   }
 }
@@ -83,7 +86,7 @@ export async function markNotificationAsRead(notificationId: number) {
       })
       .where(drizzleEq(notifications.id, notificationId));
   } catch (error) {
-    console.error("[Notifications] Error marking notification as read:", error);
+    log.error("[Notifications] Error marking notification as read:", error);
     return null;
   }
 }
@@ -112,7 +115,7 @@ export async function markAllNotificationsAsRead(userId: number) {
         )
       );
   } catch (error) {
-    console.error("[Notifications] Error marking all notifications as read:", error);
+    log.error("[Notifications] Error marking all notifications as read:", error);
     return null;
   }
 }
@@ -140,7 +143,7 @@ export async function countUnreadNotifications(userId: number): Promise<number> 
     
     return parseInt(result[0]?.count as string) || 0;
   } catch (error) {
-    console.error("[Notifications] Error counting unread notifications:", error);
+    log.error("[Notifications] Error counting unread notifications:", error);
     return 0;
   }
 }
