@@ -1,6 +1,5 @@
-// @ts-ignore
 import PDFDocument from "pdfkit";
-import ExcelJS from "exceljs";
+import ExcelJS, { Worksheet, Workbook, Cell } from "exceljs";
 
 export interface PaymentStatusData {
   month: string;
@@ -137,22 +136,22 @@ export async function generateExcel(data: PaymentStatusData): Promise<Buffer> {
   const worksheet = workbook.addWorksheet("Estado de Pagos");
 
   // Encabezado
-  (worksheet as any).mergeCells("A1:D1");
+  worksheet.mergeCells("A1:D1");
   const titleCell = worksheet.getCell("A1");
   titleCell.value = data.condominiumName;
   titleCell.font = { size: 16, bold: true };
-  titleCell.alignment = { horizontal: "center" as any, vertical: "center" as any };
+  titleCell.alignment = { horizontal: "center", vertical: "center" };
 
-  (worksheet as any).mergeCells("A2:D2");
+  worksheet.mergeCells("A2:D2");
   const subtitleCell = worksheet.getCell("A2");
   subtitleCell.value = "Estado de Pagos por Apartamento";
   subtitleCell.font = { size: 12, bold: true };
-  subtitleCell.alignment = { horizontal: "center" as any, vertical: "center" as any };
+  subtitleCell.alignment = { horizontal: "center", vertical: "center" };
 
-  (worksheet as any).mergeCells("A3:D3");
+  worksheet.mergeCells("A3:D3");
   const monthCell = worksheet.getCell("A3");
   monthCell.value = `Mes: ${data.month}`;
-  monthCell.alignment = { horizontal: "center" as any };
+  monthCell.alignment = { horizontal: "center" };
 
   worksheet.addRow([]); // Fila vacía
 

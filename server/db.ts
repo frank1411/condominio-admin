@@ -196,12 +196,12 @@ export async function initializeFloorsAndApartments() {
   const numApartments = config.apartmentsPerFloor || 6;
   
   for (let i = 0; i < numFloors; i++) {
-    const floorResult = await db.insert(floors).values({
+    const [floor] = await db.insert(floors).values({
       floorNumber: i,
       floorName: floorNames[i] || `Piso ${i}`,
-    });
+    }).returning({ id: floors.id });
     
-    const floorId = (floorResult as any).insertId;
+    const floorId = floor.id;
     
     for (let j = 1; j <= numApartments; j++) {
       const apartmentNumber = `${i}${String(j).padStart(2, "0")}`;
