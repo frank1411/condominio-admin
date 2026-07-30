@@ -118,3 +118,4 @@ client/public/__manus__/version.json
 .env
 !.env.example
 .vercel
+api/index.js
