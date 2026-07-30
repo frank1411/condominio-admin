@@ -5,10 +5,10 @@ import superjson from "superjson";
 import { trpc } from "./lib/trpc";
 import App from "./App";
 import "./index.css";
-import { initSessionCookieSync, getSupabaseAccessToken } from "./_core/supabase";
+import { getSupabaseAccessToken } from "./_core/supabase";
 
-// Sync Supabase session to httpOnly cookie on startup and auth changes
-initSessionCookieSync();
+// Auth: Supabase token is passed via Authorization header in every tRPC call
+// (see headers() function in httpBatchLink config below)
 
 const queryClient = new QueryClient({
   defaultOptions: {
