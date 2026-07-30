@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Building2, Loader2 } from "lucide-react";
-import { supabase } from "@/_core/supabase";
+import { supabase, getSupabaseAccessToken } from "@/_core/supabase";
 import { useLocation } from "wouter";
 
 export default function Login() {
@@ -22,25 +22,34 @@ export default function Login() {
 
   async function handleLogin(e?: React.FormEvent) {
     e?.preventDefault();
+    console.log("[login] starting...", { email });
     setIsLoading(true);
     setError(null);
 
     try {
+      console.log("[login] calling signInWithPassword...");
       const { error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      console.log("[login] signInWithPassword done", { hasError: !!authError, error: authError?.message });
 
       if (authError) {
         throw authError;
       }
 
-      // Redirect to home — the tRPC client now includes the Supabase token
-      // via Authorization header (see main.tsx headers() function)
+      // Check session token
+      const token = getSupabaseAccessToken();
+      console.log("[login] got token:", !!token, token?.slice(0, 20) + '...');
+
+      console.log("[login] redirecting to /");
       setLocation("/");
+      console.log("[login] setLocation called");
     } catch (err: any) {
+      console.log("[login] error caught:", err.message);
       setError(err.message || "Error al iniciar sesión. Verifica tus credenciales.");
     } finally {
+      console.log("[login] finally - setting isLoading false");
       setIsLoading(false);
     }
   }
