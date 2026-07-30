@@ -38,16 +38,35 @@ export default function Login() {
         throw authError;
       }
 
-      // Ensure the session is fully persisted before redirecting.
-      // Without this, getSupabaseAccessToken() may return undefined because
-      // Supabase hasn't finished writing the session to localStorage yet.
+      // Ensure the session is persisted to localStorage before redirecting.
+      // getSession() reads from Supabase's in-memory state, but getSupabaseAccessToken()
+      // reads from localStorage. If the token hasn't been written to localStorage yet,
+      // the tRPC Authorization header will be missing on the next page load.
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
       if (!session?.access_token) {
         throw new Error("No se pudo obtener la sesión después del inicio de sesión");
       }
 
-      console.log("[login] got token:", !!session.access_token, session.access_token.slice(0, 20) + '...');
+      // Manually persist access_token to localStorage so getSupabaseAccessToken() finds it.
+      // Supabase's internal persistence may be async/deferred; this is our guarantee.
+      const projectRef = new URL(import.meta.env.VITE_SUPABASE_URL).hostname.split(".")[0];
+      const storageKey = `sb-${projectRef}-auth-token`;
+      const existingRaw = localStorage.getItem(storageKey);
+      if (existingRaw) {
+        const parsed = JSON.parse(existingRaw);
+        if (parsed?.[0] !== session.access_token) {
+          parsed[0] = session.access_token;
+          localStorage.setItem(storageKey, JSON.stringify(parsed));
+        }
+      } else {
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify([session.access_token, session.refresh_token ?? null, null, null, null])
+        );
+      }
+
+      console.log("[login] got token:", session.access_token.slice(0, 20) + '...');
 
       console.log("[login] redirecting to /");
       setLocation("/");
