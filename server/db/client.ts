@@ -10,20 +10,26 @@ let _db: ReturnType<typeof drizzle> | null = null;
 let _pgClient: ReturnType<typeof postgres> | null = null;
 
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      // Pool de conexiones explícito con opciones serverless
-      _pgClient = postgres(process.env.DATABASE_URL, {
-        max: 10,             // máximo 10 conexiones concurrentes
-        idle_timeout: 30,    // cerrar conexión idle tras 30s
-        connect_timeout: 10, // timeout de conexión 10s
-        prepare: false,      // evitar prepared statements persistentes en serverless
-        max_lifetime: 60 * 5, // reciclar cada 5 min (evita conexiones stale)
-      });
-      _db = drizzle(_pgClient);
-    } catch (error) {
-      log.warn("[Database] Failed to connect:", error);
-      _db = null;
+  if (!_db) {
+    console.log("[db] DATABASE_URL present:", !!process.env.DATABASE_URL);
+    if (process.env.DATABASE_URL) {
+      try {
+        console.log("[db] Attempting connection...");
+        _pgClient = postgres(process.env.DATABASE_URL, {
+          max: 10,
+          idle_timeout: 30,
+          connect_timeout: 10,
+          prepare: false,
+          max_lifetime: 60 * 5,
+        });
+        _db = drizzle(_pgClient);
+        console.log("[db] Connected successfully");
+      } catch (error) {
+        console.warn("[db] Failed to connect:", error);
+        _db = null;
+      }
+    } else {
+      console.log("[db] DATABASE_URL not set");
     }
   }
   return _db;
