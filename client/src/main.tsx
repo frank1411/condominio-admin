@@ -5,7 +5,6 @@ import superjson from "superjson";
 import { trpc } from "./lib/trpc";
 import App from "./App";
 import "./index.css";
-import { getLoginUrl } from "./const";
 import { initSessionCookieSync } from "./_core/supabase";
 
 // Sync Supabase session to httpOnly cookie on startup and auth changes
@@ -30,7 +29,7 @@ const queryClient = new QueryClient({
 function redirectToLoginIfUnauthorized(error: unknown) {
   const err = error as { data?: { httpStatus?: number } };
   if (err?.data?.httpStatus === 401) {
-    window.location.href = getLoginUrl();
+    window.location.href = "/login";
   }
 }
 
