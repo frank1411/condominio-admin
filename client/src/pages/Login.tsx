@@ -38,9 +38,16 @@ export default function Login() {
         throw authError;
       }
 
-      // Check session token
-      const token = getSupabaseAccessToken();
-      console.log("[login] got token:", !!token, token?.slice(0, 20) + '...');
+      // Ensure the session is fully persisted before redirecting.
+      // Without this, getSupabaseAccessToken() may return undefined because
+      // Supabase hasn't finished writing the session to localStorage yet.
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session?.access_token) {
+        throw new Error("No se pudo obtener la sesión después del inicio de sesión");
+      }
+
+      console.log("[login] got token:", !!session.access_token, session.access_token.slice(0, 20) + '...');
 
       console.log("[login] redirecting to /");
       setLocation("/");
