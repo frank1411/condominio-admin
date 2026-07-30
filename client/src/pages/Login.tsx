@@ -65,20 +65,26 @@ export default function Login() {
               </p>
               <div className="space-y-2">
                 <Input
+                  id="email"
+                  name="email"
                   type="email"
                   placeholder="Correo electrónico"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   disabled={isLoading}
+                  autoComplete="email"
                 />
                 <Input
+                  id="password"
+                  name="password"
                   type="password"
                   placeholder="Contraseña"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={isLoading}
+                  autoComplete="current-password"
                 />
               </div>
             </div>
