@@ -23,7 +23,7 @@ async function syncSessionCookie(session: Session | null) {
       await fetch("/api/trpc/auth.logout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 0: null }),
+        body: JSON.stringify(null),
         credentials: "include",
       });
     } catch { /* ignore */ }
@@ -33,7 +33,7 @@ async function syncSessionCookie(session: Session | null) {
     await fetch("/api/trpc/auth.setSessionCookie", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 0: { accessToken: session.access_token } }),
+      body: JSON.stringify({ accessToken: session.access_token }),
       credentials: "include",
     });
   } catch { /* ignore — cookie will be set on next auth event */ }

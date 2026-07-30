@@ -40,7 +40,7 @@ export default function Login() {
         await fetch("/api/trpc/auth.setSessionCookie", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 0: { accessToken: data.session.access_token } }),
+          body: JSON.stringify({ accessToken: data.session.access_token }),
           credentials: "include",
         });
       }
