@@ -9,8 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Building2, Loader2 } from "lucide-react";
-import { supabase, getSupabaseAccessToken } from "@/_core/supabase";
-import { useLocation } from "wouter";
+import { supabase } from "@/_core/supabase";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -68,9 +67,13 @@ export default function Login() {
 
       console.log("[login] got token:", session.access_token.slice(0, 20) + '...');
 
+      // Full page navigation to / — this forces a full re-initialization of the app
+      // so that trpc.auth.me.useQuery() mounts fresh with the Authorization header
+      // containing the token from localStorage.  wouter's setLocation() is avoided
+      // because it only changes the URL via history.pushState without re-mounting
+      // the AuthProvider, so the stale tRPC query result (null) persists.
       console.log("[login] redirecting to /");
-      setLocation("/");
-      console.log("[login] setLocation called");
+      window.location.href = "/";
     } catch (err: any) {
       console.log("[login] error caught:", err.message);
       setError(err.message || "Error al iniciar sesión. Verifica tus credenciales.");
