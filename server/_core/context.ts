@@ -38,6 +38,8 @@ export async function createContext(
           const newUser = await db.createUserFromSupabase({
             email: supabaseUser.email,
             name: supabaseUser.user_metadata?.full_name ?? supabaseUser.email.split("@")[0],
+            supabaseUserId: supabaseUser.id,
+            role: supabaseUser.user_metadata?.role ?? undefined,
           });
           if (newUser) {
             user = newUser;

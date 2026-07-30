@@ -76,6 +76,49 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) {
+    log.warn("[Database] Cannot get user: database not available");
+    return undefined;
+  }
+
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createUserFromSupabase(data: {
+  email: string;
+  name: string;
+  supabaseUserId?: string;
+  role?: "admin" | "user";
+}) {
+  const db = await getDb();
+  if (!db) {
+    log.warn("[Database] Cannot create user: database not available");
+    return undefined;
+  }
+
+  try {
+    const insertData: InsertUser = {
+      openId: data.supabaseUserId ?? data.email,
+      email: data.email,
+      name: data.name,
+      loginMethod: "supabase",
+      role: data.role ?? "user",
+      isActive: true,
+      approvalStatus: "pending",
+      lastSignedIn: new Date(),
+    };
+
+    const result = await db.insert(users).values(insertData).returning();
+    return result[0];
+  } catch (error) {
+    log.error("[Database] Failed to create user from Supabase:", error);
+    return undefined;
+  }
+}
+
 export async function getUserById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
