@@ -24,8 +24,8 @@ var supabaseUrl, supabaseAnonKey, supabaseServiceKey, supabaseAnon, supabaseAdmi
 var init_supabase = __esm({
   "server/_core/supabase.ts"() {
     "use strict";
-    supabaseUrl = process.env.SUPABASE_URL ?? "";
-    supabaseAnonKey = process.env.SUPABASE_ANON_KEY ?? "";
+    supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "";
+    supabaseAnonKey = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY ?? "";
     supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY ?? "";
     supabaseAnon = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: { autoRefreshToken: false, persistSession: false }
