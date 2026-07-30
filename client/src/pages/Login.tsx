@@ -25,7 +25,7 @@ export default function Login() {
     setError(null);
 
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      const { error: authError, data } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -34,8 +34,17 @@ export default function Login() {
         throw authError;
       }
 
-      // Success! The session is automatically managed by Supabase client
-      // and the syncSessionCookie listener in supabase.ts handles the cookie.
+      // Sync the session cookie to the server before navigating
+      // This ensures App.tsx/useAuth can verify the session via trpc.auth.me
+      if (data?.session) {
+        await fetch("/api/trpc/auth.setSessionCookie", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 0: { accessToken: data.session.access_token } }),
+          credentials: "include",
+        });
+      }
+
       setLocation("/");
     } catch (err: any) {
       setError(err.message || "Error al iniciar sesión. Verifica tus credenciales.");
