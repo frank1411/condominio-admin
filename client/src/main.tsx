@@ -5,7 +5,7 @@ import superjson from "superjson";
 import { trpc } from "./lib/trpc";
 import App from "./App";
 import "./index.css";
-import { initSessionCookieSync } from "./_core/supabase";
+import { initSessionCookieSync, getSupabaseAccessToken } from "./_core/supabase";
 
 // Sync Supabase session to httpOnly cookie on startup and auth changes
 initSessionCookieSync();
@@ -56,9 +56,13 @@ const trpcClient = trpc.createClient({
       transformer: superjson,
       maxURLLength: 4096,
       headers() {
-        // Auth is handled via httpOnly cookie (app_session_id)
-        // No need to read token from localStorage
-        return {};
+        // Auth: try Supabase session token first (Bearer), fallback to httpOnly cookie
+        const token = getSupabaseAccessToken();
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers["authorization"] = `Bearer ${token}`;
+        }
+        return headers;
       },
       fetch(input, init) {
         return globalThis.fetch(input, {

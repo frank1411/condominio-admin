@@ -25,7 +25,7 @@ export default function Login() {
     setError(null);
 
     try {
-      const { error: authError, data } = await supabase.auth.signInWithPassword({
+      const { error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -34,17 +34,8 @@ export default function Login() {
         throw authError;
       }
 
-      // Sync the session cookie to the server before navigating
-      // This ensures App.tsx/useAuth can verify the session via trpc.auth.me
-      if (data?.session) {
-        await fetch("/api/trpc/auth.setSessionCookie", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accessToken: data.session.access_token }),
-          credentials: "include",
-        });
-      }
-
+      // Redirect to home — the tRPC client now includes the Supabase token
+      // via Authorization header (see main.tsx headers() function)
       setLocation("/");
     } catch (err: any) {
       setError(err.message || "Error al iniciar sesión. Verifica tus credenciales.");
