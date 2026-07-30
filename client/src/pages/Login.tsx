@@ -10,14 +10,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Building2, Loader2 } from "lucide-react";
 import { supabase } from "@/_core/supabase";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -36,7 +36,7 @@ export default function Login() {
 
       // Success! The session is automatically managed by Supabase client
       // and the syncSessionCookie listener in supabase.ts handles the cookie.
-      navigate("/");
+      setLocation("/");
     } catch (err: any) {
       setError(err.message || "Error al iniciar sesión. Verifica tus credenciales.");
     } finally {
