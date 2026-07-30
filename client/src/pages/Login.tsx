@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,9 +18,10 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, setLocation] = useLocation();
+  const formRef = useRef<HTMLFormElement>(null);
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleLogin(e?: React.FormEvent) {
+    e?.preventDefault();
     setIsLoading(true);
     setError(null);
 
@@ -44,6 +45,13 @@ export default function Login() {
     }
   }
 
+  // Ensure the form submits even if the button click doesn't trigger onSubmit
+  function handleButtonClick() {
+    if (formRef.current) {
+      formRef.current.requestSubmit();
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="w-full max-w-md shadow-lg">
@@ -57,7 +65,7 @@ export default function Login() {
           <CardDescription>Gestión de pagos y cobros</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form ref={formRef} onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <p className="text-sm text-gray-600 text-center mb-4">
                 Inicia sesión para acceder al sistema de administración de tu
@@ -100,6 +108,7 @@ export default function Login() {
               className="w-full bg-blue-600 hover:bg-blue-700"
               size="lg"
               disabled={isLoading}
+              onClick={handleButtonClick}
             >
               {isLoading ? (
                 <>
