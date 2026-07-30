@@ -16,7 +16,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [, setLocation] = useLocation();
   const formRef = useRef<HTMLFormElement>(null);
 
   async function handleLogin(e?: React.FormEvent) {
