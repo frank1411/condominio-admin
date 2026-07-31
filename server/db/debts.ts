@@ -195,7 +195,7 @@ export async function generateDebtsFromCharge(chargeId: number) {
 
     log.info(`[Debt Generation] Successfully generated debts for charge ${chargeId}`);
   } catch (error) {
-    log.error(`[Debt Generation] Error generating debts for charge ${chargeId}:`, error);
+    log.error({ err: error }, `[Debt Generation] Error generating debts for charge ${chargeId}:`);
   }
 }
 

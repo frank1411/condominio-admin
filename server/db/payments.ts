@@ -4,7 +4,7 @@ import { createLogger } from "../_core/logger";
 const log = createLogger("payments");
 import { TRPCError } from "@trpc/server";
 import { apartments, auditLog, monthlyDebts, payments } from "../../drizzle/schema";
-import { getDb } from "./client";
+import { getDb, type DbTransaction } from "./client";
 import { createNotification } from "./notifications";
 import { getUserById } from "./users";
 
@@ -93,7 +93,7 @@ export async function getPendingPayments(limit: number = 20, offset: number = 0)
     
     return { data, total: data.length };
   } catch (error) {
-    log.error("[Payments] Error fetching pending payments:", error);
+    log.error({ err: error }, "[Payments] Error fetching pending payments:");
     return { data: [], total: 0 };
   }
 }
@@ -102,7 +102,7 @@ export async function updatePaymentStatus(id: number, status: "approved" | "reje
   const db = await getDb();
   if (!db) return null;
   
-  const data: any = {
+  const data: Partial<typeof payments.$inferInsert> = {
     status,
     reviewedAt: new Date(),
     reviewedBy,
@@ -131,7 +131,7 @@ export async function getPaymentById(id: number) {
 export async function applyPaymentToDebts(
   apartmentId: number,
   paymentAmount: number,
-  tx?: any
+  tx?: DbTransaction
 ) {
   const db = tx ?? await getDb();
   if (!db) return null;
@@ -155,8 +155,8 @@ export async function applyPaymentToDebts(
     for (const debt of pendingDebts) {
       if (remainingPayment <= 0) break;
       
-      const debtAmount = parseFloat(debt.pendingAmount as unknown as string);
-      const currentPaid = parseFloat(debt.totalPaid as unknown as string) || 0;
+      const debtAmount = parseFloat(debt.pendingAmount);
+      const currentPaid = parseFloat(debt.totalPaid ?? "0") || 0;
       
       if (remainingPayment >= debtAmount) {
         // El pago cubre completamente esta deuda
@@ -190,7 +190,7 @@ export async function applyPaymentToDebts(
     
     return { success: true, appliedAmount: appliedTotal };
   } catch (error) {
-    log.error("[Payment Liquidation] Error applying payment to debts:", error);
+    log.error({ err: error }, "[Payment Liquidation] Error applying payment to debts:");
     return { success: false, appliedAmount: 0 };
   }
 }
@@ -205,7 +205,7 @@ export async function applyPaymentToDebts(
 export async function validatePaymentAmount(
   apartmentId: number,
   paymentAmount: number,
-  tx?: any
+  tx?: DbTransaction
 ): Promise<{ valid: boolean; reason?: string }> {
   const db = tx ?? await getDb();
   if (!db) return { valid: false, reason: "Base de datos no disponible" };
@@ -223,10 +223,13 @@ export async function validatePaymentAmount(
       ));
     
     // Calcular deuda total pendiente
-    const totalPending = pendingDebts.reduce((sum, debt) => {
-      const pending = parseFloat(debt.pendingAmount as unknown as string) || 0;
-      return sum + pending;
-    }, 0);
+    const totalPending = pendingDebts.reduce(
+      (sum: number, debt: { pendingAmount: string | null }) => {
+        const pending = parseFloat(debt.pendingAmount || "0") || 0;
+        return sum + pending;
+      },
+      0
+    );
     
     if (paymentAmount > totalPending + 0.01) { // Permitir pequeños errores de redondeo
       return {
@@ -237,7 +240,7 @@ export async function validatePaymentAmount(
     
     return { valid: true };
   } catch (error) {
-    log.error("[Payment Validation] Error validating payment amount:", error);
+    log.error({ err: error }, "[Payment Validation] Error validating payment amount:");
     return { valid: false, reason: "Error al validar el monto" };
   }
 }
@@ -283,7 +286,7 @@ export async function checkDuplicatePayment(apartmentId: number, month: string, 
     
     return { isDuplicate: false };
   } catch (error) {
-    log.error("[Payment Validation] Error checking duplicate payment:", error);
+    log.error({ err: error }, "[Payment Validation] Error checking duplicate payment:");
     return { isDuplicate: false };
   }
 }
@@ -364,15 +367,17 @@ export async function approvePaymentWithValidations(
     // Transacción ACID: todo o nada con bloqueo de fila
     return await db.transaction(async (tx) => {
       // 1. SELECT ... FOR UPDATE — bloquea la fila del pago
-      const [payment]: typeof payments.$inferSelect[] = await tx.execute(
-        sql`SELECT * FROM payments WHERE id = ${paymentId} FOR UPDATE`
-      );
+      const [payment] = await tx
+        .select()
+        .from(payments)
+        .where(eq(payments.id, paymentId))
+        .for("update");
 
       if (!payment) {
         return { success: false, message: "Pago no encontrado" };
       }
 
-      const paymentAmount = parseFloat(payment.amount as unknown as string);
+      const paymentAmount = parseFloat(payment.amount);
 
       // 2. Validar mes del pago
       const monthValidation = validatePaymentMonth(payment.month);
@@ -426,7 +431,7 @@ export async function approvePaymentWithValidations(
     if (error instanceof TRPCError) {
       return { success: false, message: error.message };
     }
-    log.error("[Payment Approval] Error approving payment:", error);
+    log.error({ err: error }, "[Payment Approval] Error approving payment:");
     return { success: false, message: "Error al aprobar el pago" };
   }
 }
@@ -493,7 +498,7 @@ export async function uploadPaymentVoucher(
 
     return { url: publicUrl, key: s3Key };
   } catch (error) {
-    log.error("[S3] Error uploading voucher:", error);
+    log.error({ err: error }, "[S3] Error uploading voucher:");
     throw error;
   }
 }
@@ -516,7 +521,7 @@ export async function getPaymentVoucherUrl(paymentId: number): Promise<string | 
 
     return payment[0]?.voucherImageUrl || null;
   } catch (error) {
-    log.error("[S3] Error getting voucher URL:", error);
+    log.error({ err: error }, "[S3] Error getting voucher URL:");
     return null;
   }
 }
@@ -557,7 +562,7 @@ export async function deletePaymentVoucher(paymentId: number): Promise<boolean> 
 
     return true;
   } catch (error) {
-    log.error("[S3] Error deleting voucher:", error);
+    log.error({ err: error }, "[S3] Error deleting voucher:");
     return false;
   }
 }

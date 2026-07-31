@@ -1,9 +1,10 @@
 import { eq, and, desc, asc } from "drizzle-orm";
 import { createLogger } from "../_core/logger";
+import { InsertUser, apartments, users } from "../../drizzle/schema";
+import { getDb } from "./client";
+import { getAllApartments, getAllFloors, getCondominiumConfig } from "./condominium";
 
 const log = createLogger("users");
-import { InsertUser, users } from "../../drizzle/schema";
-import { getDb } from "./client";
 
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
@@ -60,7 +61,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       set: updateSet,
     });
   } catch (error) {
-    log.error("[Database] Failed to upsert user:", error);
+    log.error({ err: error }, "[Database] Failed to upsert user:");
     throw error;
   }
 }
@@ -114,7 +115,7 @@ export async function createUserFromSupabase(data: {
     const result = await db.insert(users).values(insertData).returning();
     return result[0];
   } catch (error) {
-    log.error("[Database] Failed to create user from Supabase:", error);
+    log.error({ err: error }, "[Database] Failed to create user from Supabase:");
     return undefined;
   }
 }
@@ -233,7 +234,7 @@ export async function generateAllApartmentNames() {
 
     return { success: true };
   } catch (error) {
-    log.error("Error generating apartment names:", error);
+    log.error({ err: error }, "Error generating apartment names:");
     return null;
   }
 }

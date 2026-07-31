@@ -12,7 +12,7 @@ export async function createNotification(data: typeof notifications.$inferInsert
   try {
     return await db.insert(notifications).values(data);
   } catch (error) {
-    log.error("[Notifications] Error creating notification:", error);
+    log.error({ err: error }, "[Notifications] Error creating notification:");
     return null;
   }
 }
@@ -39,7 +39,7 @@ export async function getUnreadNotifications(userId: number) {
       )
       .orderBy(desc(notifications.createdAt));
   } catch (error) {
-    log.error("[Notifications] Error getting unread notifications:", error);
+    log.error({ err: error }, "[Notifications] Error getting unread notifications:");
     return [];
   }
 }
@@ -62,7 +62,7 @@ export async function getUserNotifications(userId: number, limit: number = 50) {
       .orderBy(desc(notifications.createdAt))
       .limit(limit);
   } catch (error) {
-    log.error("[Notifications] Error getting user notifications:", error);
+    log.error({ err: error }, "[Notifications] Error getting user notifications:");
     return [];
   }
 }
@@ -86,7 +86,7 @@ export async function markNotificationAsRead(notificationId: number) {
       })
       .where(drizzleEq(notifications.id, notificationId));
   } catch (error) {
-    log.error("[Notifications] Error marking notification as read:", error);
+    log.error({ err: error }, "[Notifications] Error marking notification as read:");
     return null;
   }
 }
@@ -115,7 +115,7 @@ export async function markAllNotificationsAsRead(userId: number) {
         )
       );
   } catch (error) {
-    log.error("[Notifications] Error marking all notifications as read:", error);
+    log.error({ err: error }, "[Notifications] Error marking all notifications as read:");
     return null;
   }
 }
@@ -143,7 +143,7 @@ export async function countUnreadNotifications(userId: number): Promise<number> 
     
     return parseInt(result[0]?.count as string) || 0;
   } catch (error) {
-    log.error("[Notifications] Error counting unread notifications:", error);
+    log.error({ err: error }, "[Notifications] Error counting unread notifications:");
     return 0;
   }
 }

@@ -78,6 +78,21 @@ export function getSupabaseAccessToken(): string | undefined {
   }
 }
 
+/**
+ * Remove the persisted Supabase session from localStorage.
+ * Defense-in-depth companion to supabase.auth.signOut(): guarantees the
+ * access token is gone even if signOut() fails on a network error during
+ * refresh-token revocation.
+ */
+export function clearSupabaseSession(): void {
+  try {
+    const storageKey = `sb-${extractProjectRef(supabaseUrl)}-auth-token`;
+    localStorage.removeItem(storageKey);
+  } catch {
+    // Ignorar: si localStorage no está disponible no hay sesión que limpiar.
+  }
+}
+
 function extractProjectRef(url: string): string {
   try {
     return new URL(url).hostname.split(".")[0];

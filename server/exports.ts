@@ -140,13 +140,13 @@ export async function generateExcel(data: PaymentStatusData): Promise<Buffer> {
   const titleCell = worksheet.getCell("A1");
   titleCell.value = data.condominiumName;
   titleCell.font = { size: 16, bold: true };
-  titleCell.alignment = { horizontal: "center", vertical: "center" };
+  titleCell.alignment = { horizontal: "center", vertical: "middle" };
 
   worksheet.mergeCells("A2:D2");
   const subtitleCell = worksheet.getCell("A2");
   subtitleCell.value = "Estado de Pagos por Apartamento";
   subtitleCell.font = { size: 12, bold: true };
-  subtitleCell.alignment = { horizontal: "center", vertical: "center" };
+  subtitleCell.alignment = { horizontal: "center", vertical: "middle" };
 
   worksheet.mergeCells("A3:D3");
   const monthCell = worksheet.getCell("A3");

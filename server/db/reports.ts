@@ -1,14 +1,12 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { payments, monthlyDebts, apartments, charges, users } from "../../drizzle/schema";
 import { createLogger } from "../_core/logger";
-
-const log = createLogger("reports");
-import { payments, monthlyDebts, apartments, charges } from "../../drizzle/schema";
 import { getDb } from "./client";
 import { getCondominiumConfig } from "./condominium";
 import { getUserById } from "./users";
 import { getDebtsByMonth } from "./debts";
 
-import { createLogger } from "../_core/logger";
+const log = createLogger("reports");
 
 export async function getMonthlyReportData(apartmentId: number, month: string) {
   const db = await getDb();
@@ -58,7 +56,7 @@ export async function getMonthlyReportData(apartmentId: number, month: string) {
       month,
     };
   } catch (error) {
-    log.error("[Reports] Error getting monthly report data:", error);
+    log.error({ err: error }, "[Reports] Error getting monthly report data:");
     return null;
   }
 }
@@ -116,7 +114,7 @@ export async function getUserPaymentsSummary(userId: number, limit: number = 12)
       totalPending: totalPending.toFixed(2),
     };
   } catch (error) {
-    log.error("[Reports] Error getting user payments summary:", error);
+    log.error({ err: error }, "[Reports] Error getting user payments summary:");
     return { payments: [], debts: [], totalPaid: "0", totalPending: "0" };
   }
 }
@@ -136,7 +134,7 @@ export async function getMonthlyDebtsSummary(month: string) {
       .where(eq(monthlyDebts.month, month))
       .orderBy(desc(monthlyDebts.pendingAmount));
   } catch (error) {
-    log.error("[Reports] Error getting monthly debts summary:", error);
+    log.error({ err: error }, "[Reports] Error getting monthly debts summary:");
     return [];
   }
 }
@@ -169,7 +167,7 @@ export async function getPaymentsByStatus(status: "pending" | "approved" | "reje
 
     return await query.orderBy(desc(payments.submittedAt));
   } catch (error) {
-    log.error("[Reports] Error getting payments by status:", error);
+    log.error({ err: error }, "[Reports] Error getting payments by status:");
     return [];
   }
 }

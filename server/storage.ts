@@ -3,14 +3,22 @@ import { supabaseAdmin } from "./_core/supabase";
 const BUCKET = process.env.SUPABASE_STORAGE_BUCKET ?? "condominio-admin";
 
 /**
- * Returns the Supabase storage bucket name.
+ * Returns the Supabase admin client, throwing if not initialized.
  */
-function getBucket(): string {
+function getAdminClient() {
   if (!supabaseAdmin) {
     throw new Error(
       "Supabase client not initialized. Set SUPABASE_URL and SUPABASE_SERVICE_KEY env vars."
     );
   }
+  return supabaseAdmin;
+}
+
+/**
+ * Returns the Supabase storage bucket name.
+ */
+function getBucket(): string {
+  getAdminClient(); // valida que el cliente exista
   return BUCKET;
 }
 
@@ -27,12 +35,13 @@ export async function storagePut(
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
+  const admin = getAdminClient();
   const bucket = getBucket();
   const key = normalizeKey(relKey);
   const fileData =
     typeof data === "string" ? new Blob([data], { type: contentType }) : data;
 
-  const { error } = await supabaseAdmin.storage
+  const { error } = await admin.storage
     .from(bucket)
     .upload(key, fileData, {
       contentType,
@@ -45,7 +54,7 @@ export async function storagePut(
     );
   }
 
-  const { data: publicData } = supabaseAdmin.storage
+  const { data: publicData } = admin.storage
     .from(bucket)
     .getPublicUrl(key);
 
@@ -59,10 +68,11 @@ export async function storagePut(
  * @returns `{ key, url }` with the public URL
  */
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
+  const admin = getAdminClient();
   const bucket = getBucket();
   const key = normalizeKey(relKey);
 
-  const { data: publicData } = supabaseAdmin.storage
+  const { data: publicData } = admin.storage
     .from(bucket)
     .getPublicUrl(key);
 

@@ -1,12 +1,7 @@
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
-var __esm = (fn, res, err) => function __init() {
-  if (err) throw err[0];
-  try {
-    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-  } catch (e) {
-    throw err = [e], e;
-  }
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
 };
 var __export = (target, all) => {
   for (var name in all)
@@ -231,7 +226,7 @@ async function getDb() {
 }
 
 // server/db/users.ts
-import { eq } from "drizzle-orm";
+import { eq as eq2 } from "drizzle-orm";
 
 // drizzle/schema.ts
 import {
@@ -260,7 +255,7 @@ var notificationTypeEnum = pgEnum("notification_type", [
   "reminder",
   "system"
 ]);
-var users2 = pgTable("users", {
+var users = pgTable("users", {
   id: serial("id").primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
@@ -310,7 +305,7 @@ var floors = pgTable("floors", {
   // "Planta Baja", "Piso 1", etc.
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
-var apartments2 = pgTable("apartments", {
+var apartments = pgTable("apartments", {
   id: serial("id").primaryKey(),
   floorId: integer("floorId").notNull(),
   // FK a floors
@@ -432,88 +427,10 @@ var notifications = pgTable("notifications", {
   index("idx_notif_user_read_created").on(table.userId, table.isRead, table.createdAt)
 ]);
 
-// server/db/users.ts
-var log2 = createLogger("users");
-async function getUserByEmail(email) {
-  const db = await getDb();
-  if (!db) {
-    log2.warn("[Database] Cannot get user: database not available");
-    return void 0;
-  }
-  const result = await db.select().from(users2).where(eq(users2.email, email)).limit(1);
-  return result.length > 0 ? result[0] : void 0;
-}
-async function createUserFromSupabase(data) {
-  const db = await getDb();
-  if (!db) {
-    log2.warn("[Database] Cannot create user: database not available");
-    return void 0;
-  }
-  try {
-    const insertData = {
-      openId: data.supabaseUserId ?? data.email,
-      email: data.email,
-      name: data.name,
-      loginMethod: "supabase",
-      role: data.role ?? "user",
-      isActive: true,
-      approvalStatus: "pending",
-      lastSignedIn: /* @__PURE__ */ new Date()
-    };
-    const result = await db.insert(users2).values(insertData).returning();
-    return result[0];
-  } catch (error) {
-    log2.error("[Database] Failed to create user from Supabase:", error);
-    return void 0;
-  }
-}
-async function getUserById(id) {
-  const db = await getDb();
-  if (!db) return void 0;
-  const result = await db.select().from(users2).where(eq(users2.id, id)).limit(1);
-  return result.length > 0 ? result[0] : void 0;
-}
-async function getAllUsers() {
-  const db = await getDb();
-  if (!db) return [];
-  return await db.select().from(users2);
-}
-async function getUsersByRole(role) {
-  const db = await getDb();
-  if (!db) return [];
-  return await db.select().from(users2).where(eq(users2.role, role));
-}
-async function getPendingUsers() {
-  const db = await getDb();
-  if (!db) return [];
-  const { eq: drizzleEq } = await import("drizzle-orm");
-  return await db.select().from(users2).where(drizzleEq(users2.approvalStatus, "pending"));
-}
-async function updateUser(id, data) {
-  const db = await getDb();
-  if (!db) return null;
-  return await db.update(users2).set(data).where(eq(users2.id, id));
-}
-async function changeUserRole(userId, newRole) {
-  const db = await getDb();
-  if (!db) return null;
-  return await db.update(users2).set({ role: newRole }).where(eq(users2.id, userId));
-}
-async function deleteUser(userId) {
-  const db = await getDb();
-  if (!db) return null;
-  return await db.delete(users2).where(eq(users2.id, userId));
-}
-async function toggleUserActive(userId, isActive) {
-  const db = await getDb();
-  if (!db) return null;
-  return await db.update(users2).set({ isActive }).where(eq(users2.id, userId));
-}
-
 // server/db/condominium.ts
-import { eq as eq2 } from "drizzle-orm";
-var log3 = createLogger("condominium");
-async function getCondominiumConfig2() {
+import { eq } from "drizzle-orm";
+var log2 = createLogger("condominium");
+async function getCondominiumConfig() {
   const db = await getDb();
   if (!db) return null;
   const result = await db.select().from(condominiumConfig).limit(1);
@@ -522,13 +439,13 @@ async function getCondominiumConfig2() {
 async function updateCondominiumConfig(data) {
   const db = await getDb();
   if (!db) return null;
-  const result = await db.update(condominiumConfig).set(data).where(eq2(condominiumConfig.id, 1));
+  const result = await db.update(condominiumConfig).set(data).where(eq(condominiumConfig.id, 1));
   return result;
 }
 async function initializeCondominiumConfig() {
   const db = await getDb();
   if (!db) return null;
-  const existing = await getCondominiumConfig2();
+  const existing = await getCondominiumConfig();
   if (existing) return existing;
   await db.insert(condominiumConfig).values({
     id: 1,
@@ -540,12 +457,12 @@ async function initializeCondominiumConfig() {
     exchangeRate: "2600.0000",
     reminderDay: 5
   });
-  return await getCondominiumConfig2();
+  return await getCondominiumConfig();
 }
 async function initializeFloorsAndApartments() {
   const db = await getDb();
   if (!db) return;
-  const config = await getCondominiumConfig2();
+  const config = await getCondominiumConfig();
   if (!config) return;
   const existingFloors = await db.select().from(floors);
   if (existingFloors.length > 0) return;
@@ -560,7 +477,7 @@ async function initializeFloorsAndApartments() {
     const floorId = floor.id;
     for (let j = 1; j <= numApartments; j++) {
       const apartmentNumber = `${i}${String(j).padStart(2, "0")}`;
-      await db.insert(apartments2).values({
+      await db.insert(apartments).values({
         floorId,
         apartmentNumber,
         unitName: `Apt. ${apartmentNumber}`
@@ -568,20 +485,20 @@ async function initializeFloorsAndApartments() {
     }
   }
 }
-async function getAllFloors2() {
+async function getAllFloors() {
   const db = await getDb();
   if (!db) return [];
   return await db.select().from(floors);
 }
-async function getAllApartments2() {
+async function getAllApartments() {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(apartments2);
+  return await db.select().from(apartments);
 }
 async function getApartmentsByFloor(floorId) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(apartments2).where(eq2(apartments2.floorId, floorId));
+  return await db.select().from(apartments).where(eq(apartments.floorId, floorId));
 }
 function numberToLetter(num) {
   if (num < 1 || num > 26) return num.toString();
@@ -616,11 +533,11 @@ async function generateAllApartmentNames() {
   const db = await getDb();
   if (!db) return null;
   try {
-    const config = await getCondominiumConfig2();
+    const config = await getCondominiumConfig();
     if (!config) return null;
     const pattern = config.apartmentNamePattern || "Apt-{piso}-{numero}";
-    const allFloors = await getAllFloors2();
-    const allApartments = await getAllApartments2();
+    const allFloors = await getAllFloors();
+    const allApartments = await getAllApartments();
     for (const apartment of allApartments) {
       const floor = allFloors.find((f) => f.id === apartment.floorId);
       if (floor) {
@@ -630,23 +547,101 @@ async function generateAllApartmentNames() {
           floor.floorName,
           parseInt(apartment.apartmentNumber)
         );
-        await db.update(apartments2).set({ unitName: newName }).where(eq2(apartments2.id, apartment.id));
+        await db.update(apartments).set({ unitName: newName }).where(eq(apartments.id, apartment.id));
       }
     }
     return { success: true };
   } catch (error) {
-    log3.error("Error generating apartment names:", error);
+    log2.error({ err: error }, "Error generating apartment names:");
     return null;
   }
 }
 async function updateApartmentName(id, name) {
   const db = await getDb();
   if (!db) return null;
-  return await db.update(apartments2).set({ unitName: name }).where(eq2(apartments2.id, id));
+  return await db.update(apartments).set({ unitName: name }).where(eq(apartments.id, id));
+}
+
+// server/db/users.ts
+var log3 = createLogger("users");
+async function getUserByEmail(email) {
+  const db = await getDb();
+  if (!db) {
+    log3.warn("[Database] Cannot get user: database not available");
+    return void 0;
+  }
+  const result = await db.select().from(users).where(eq2(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : void 0;
+}
+async function createUserFromSupabase(data) {
+  const db = await getDb();
+  if (!db) {
+    log3.warn("[Database] Cannot create user: database not available");
+    return void 0;
+  }
+  try {
+    const insertData = {
+      openId: data.supabaseUserId ?? data.email,
+      email: data.email,
+      name: data.name,
+      loginMethod: "supabase",
+      role: data.role ?? "user",
+      isActive: true,
+      approvalStatus: "pending",
+      lastSignedIn: /* @__PURE__ */ new Date()
+    };
+    const result = await db.insert(users).values(insertData).returning();
+    return result[0];
+  } catch (error) {
+    log3.error({ err: error }, "[Database] Failed to create user from Supabase:");
+    return void 0;
+  }
+}
+async function getUserById(id) {
+  const db = await getDb();
+  if (!db) return void 0;
+  const result = await db.select().from(users).where(eq2(users.id, id)).limit(1);
+  return result.length > 0 ? result[0] : void 0;
+}
+async function getAllUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(users);
+}
+async function getUsersByRole(role) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(users).where(eq2(users.role, role));
+}
+async function getPendingUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  const { eq: drizzleEq } = await import("drizzle-orm");
+  return await db.select().from(users).where(drizzleEq(users.approvalStatus, "pending"));
+}
+async function updateUser(id, data) {
+  const db = await getDb();
+  if (!db) return null;
+  return await db.update(users).set(data).where(eq2(users.id, id));
+}
+async function changeUserRole(userId, newRole) {
+  const db = await getDb();
+  if (!db) return null;
+  return await db.update(users).set({ role: newRole }).where(eq2(users.id, userId));
+}
+async function deleteUser(userId) {
+  const db = await getDb();
+  if (!db) return null;
+  return await db.delete(users).where(eq2(users.id, userId));
+}
+async function toggleUserActive(userId, isActive) {
+  const db = await getDb();
+  if (!db) return null;
+  return await db.update(users).set({ isActive }).where(eq2(users.id, userId));
 }
 
 // server/db/charges.ts
-import { desc as desc3, eq as eq3 } from "drizzle-orm";
+import { desc as desc2, eq as eq3 } from "drizzle-orm";
 async function getAllCharges() {
   const db = await getDb();
   if (!db) return [];
@@ -656,7 +651,7 @@ async function createCharge(data) {
   const db = await getDb();
   if (!db) return null;
   await db.insert(charges).values(data);
-  const created = await db.select().from(charges).where(eq3(charges.name, data.name || "")).orderBy(desc3(charges.createdAt)).limit(1);
+  const created = await db.select().from(charges).where(eq3(charges.name, data.name || "")).orderBy(desc2(charges.createdAt)).limit(1);
   return created && created.length > 0 ? created[0] : null;
 }
 async function updateCharge(id, data) {
@@ -672,7 +667,7 @@ async function deleteCharge(id) {
 }
 
 // server/db/payments.ts
-import { eq as eq4, sql } from "drizzle-orm";
+import { eq as eq4 } from "drizzle-orm";
 import { TRPCError as TRPCError2 } from "@trpc/server";
 var log4 = createLogger("payments");
 async function createPayment(data) {
@@ -689,7 +684,7 @@ async function getPaymentsByApartment(apartmentId, month) {
     id: payments.id,
     userId: payments.userId,
     apartmentId: payments.apartmentId,
-    unitName: apartments2.unitName,
+    unitName: apartments.unitName,
     month: payments.month,
     voucherNumber: payments.voucherNumber,
     voucherImage: payments.voucherImage,
@@ -698,13 +693,13 @@ async function getPaymentsByApartment(apartmentId, month) {
     status: payments.status,
     createdAt: payments.createdAt,
     updatedAt: payments.updatedAt
-  }).from(payments).innerJoin(apartments2, drizzleEq(payments.apartmentId, apartments2.id)).where(drizzleEq(payments.apartmentId, apartmentId));
+  }).from(payments).innerJoin(apartments, drizzleEq(payments.apartmentId, apartments.id)).where(drizzleEq(payments.apartmentId, apartmentId));
   if (month) {
     query = db.select({
       id: payments.id,
       userId: payments.userId,
       apartmentId: payments.apartmentId,
-      unitName: apartments2.unitName,
+      unitName: apartments.unitName,
       month: payments.month,
       voucherNumber: payments.voucherNumber,
       voucherImage: payments.voucherImage,
@@ -713,7 +708,7 @@ async function getPaymentsByApartment(apartmentId, month) {
       status: payments.status,
       createdAt: payments.createdAt,
       updatedAt: payments.updatedAt
-    }).from(payments).innerJoin(apartments2, drizzleEq(payments.apartmentId, apartments2.id)).where(drizzleAnd(drizzleEq(payments.apartmentId, apartmentId), drizzleEq(payments.month, month)));
+    }).from(payments).innerJoin(apartments, drizzleEq(payments.apartmentId, apartments.id)).where(drizzleAnd(drizzleEq(payments.apartmentId, apartmentId), drizzleEq(payments.month, month)));
   }
   return await query;
 }
@@ -726,7 +721,7 @@ async function getPendingPayments(limit = 20, offset = 0) {
       id: payments.id,
       userId: payments.userId,
       apartmentId: payments.apartmentId,
-      unitName: apartments2.unitName,
+      unitName: apartments.unitName,
       month: payments.month,
       voucherNumber: payments.voucherNumber,
       voucherImage: payments.voucherImage,
@@ -735,10 +730,10 @@ async function getPendingPayments(limit = 20, offset = 0) {
       status: payments.status,
       createdAt: payments.createdAt,
       updatedAt: payments.updatedAt
-    }).from(payments).innerJoin(apartments2, drizzleEq(payments.apartmentId, apartments2.id)).where(drizzleEq(payments.status, "pending")).orderBy(desc6(payments.createdAt)).limit(limit).offset(offset);
+    }).from(payments).innerJoin(apartments, drizzleEq(payments.apartmentId, apartments.id)).where(drizzleEq(payments.status, "pending")).orderBy(desc6(payments.createdAt)).limit(limit).offset(offset);
     return { data, total: data.length };
   } catch (error) {
-    log4.error("[Payments] Error fetching pending payments:", error);
+    log4.error({ err: error }, "[Payments] Error fetching pending payments:");
     return { data: [], total: 0 };
   }
 }
@@ -776,7 +771,7 @@ async function applyPaymentToDebts(apartmentId, paymentAmount, tx) {
     for (const debt of pendingDebts) {
       if (remainingPayment <= 0) break;
       const debtAmount = parseFloat(debt.pendingAmount);
-      const currentPaid = parseFloat(debt.totalPaid) || 0;
+      const currentPaid = parseFloat(debt.totalPaid ?? "0") || 0;
       if (remainingPayment >= debtAmount) {
         remainingPayment -= debtAmount;
         appliedTotal += debtAmount;
@@ -798,7 +793,7 @@ async function applyPaymentToDebts(apartmentId, paymentAmount, tx) {
     }
     return { success: true, appliedAmount: appliedTotal };
   } catch (error) {
-    log4.error("[Payment Liquidation] Error applying payment to debts:", error);
+    log4.error({ err: error }, "[Payment Liquidation] Error applying payment to debts:");
     return { success: false, appliedAmount: 0 };
   }
 }
@@ -811,10 +806,13 @@ async function validatePaymentAmount(apartmentId, paymentAmount, tx) {
       drizzleEq(monthlyDebts.apartmentId, apartmentId),
       drizzleEq(monthlyDebts.isPaid, false)
     ));
-    const totalPending = pendingDebts.reduce((sum, debt) => {
-      const pending = parseFloat(debt.pendingAmount) || 0;
-      return sum + pending;
-    }, 0);
+    const totalPending = pendingDebts.reduce(
+      (sum, debt) => {
+        const pending = parseFloat(debt.pendingAmount || "0") || 0;
+        return sum + pending;
+      },
+      0
+    );
     if (paymentAmount > totalPending + 0.01) {
       return {
         valid: false,
@@ -823,7 +821,7 @@ async function validatePaymentAmount(apartmentId, paymentAmount, tx) {
     }
     return { valid: true };
   } catch (error) {
-    log4.error("[Payment Validation] Error validating payment amount:", error);
+    log4.error({ err: error }, "[Payment Validation] Error validating payment amount:");
     return { valid: false, reason: "Error al validar el monto" };
   }
 }
@@ -873,9 +871,7 @@ async function approvePaymentWithValidations(paymentId, reviewedBy, notes) {
   }
   try {
     return await db.transaction(async (tx) => {
-      const [payment] = await tx.execute(
-        sql`SELECT * FROM payments WHERE id = ${paymentId} FOR UPDATE`
-      );
+      const [payment] = await tx.select().from(payments).where(eq4(payments.id, paymentId)).for("update");
       if (!payment) {
         return { success: false, message: "Pago no encontrado" };
       }
@@ -918,7 +914,7 @@ async function approvePaymentWithValidations(paymentId, reviewedBy, notes) {
     if (error instanceof TRPCError2) {
       return { success: false, message: error.message };
     }
-    log4.error("[Payment Approval] Error approving payment:", error);
+    log4.error({ err: error }, "[Payment Approval] Error approving payment:");
     return { success: false, message: "Error al aprobar el pago" };
   }
 }
@@ -955,7 +951,7 @@ async function uploadPaymentVoucher(paymentId, fileBuffer, fileName, mimeType) {
     }).where(eq4(payments.id, paymentId));
     return { url: publicUrl, key: s3Key };
   } catch (error) {
-    log4.error("[S3] Error uploading voucher:", error);
+    log4.error({ err: error }, "[S3] Error uploading voucher:");
     throw error;
   }
 }
@@ -966,7 +962,7 @@ async function getPaymentVoucherUrl(paymentId) {
     const payment = await db.select({ voucherImageUrl: payments.voucherImageUrl }).from(payments).where(eq4(payments.id, paymentId)).limit(1);
     return payment[0]?.voucherImageUrl || null;
   } catch (error) {
-    log4.error("[S3] Error getting voucher URL:", error);
+    log4.error({ err: error }, "[S3] Error getting voucher URL:");
     return null;
   }
 }
@@ -990,7 +986,7 @@ async function getDebtsByMonth(month) {
   const result = await db.select({
     id: monthlyDebts.id,
     apartmentId: monthlyDebts.apartmentId,
-    unitName: apartments2.unitName,
+    unitName: apartments.unitName,
     month: monthlyDebts.month,
     totalDue: monthlyDebts.totalDue,
     totalPaid: monthlyDebts.totalPaid,
@@ -999,7 +995,7 @@ async function getDebtsByMonth(month) {
     isPaid: monthlyDebts.isPaid,
     createdAt: monthlyDebts.createdAt,
     updatedAt: monthlyDebts.updatedAt
-  }).from(monthlyDebts).innerJoin(apartments2, drizzleEq(monthlyDebts.apartmentId, apartments2.id)).where(drizzleEq(monthlyDebts.month, month));
+  }).from(monthlyDebts).innerJoin(apartments, drizzleEq(monthlyDebts.apartmentId, apartments.id)).where(drizzleEq(monthlyDebts.month, month));
   return result;
 }
 async function getAllUserDebts(userId) {
@@ -1011,7 +1007,7 @@ async function getAllUserDebts(userId) {
   const result = await db.select({
     id: monthlyDebts.id,
     apartmentId: monthlyDebts.apartmentId,
-    unitName: apartments2.unitName,
+    unitName: apartments.unitName,
     month: monthlyDebts.month,
     totalDue: monthlyDebts.totalDue,
     totalPaid: monthlyDebts.totalPaid,
@@ -1020,7 +1016,7 @@ async function getAllUserDebts(userId) {
     isPaid: monthlyDebts.isPaid,
     createdAt: monthlyDebts.createdAt,
     updatedAt: monthlyDebts.updatedAt
-  }).from(monthlyDebts).innerJoin(apartments2, drizzleEq(monthlyDebts.apartmentId, apartments2.id)).where(drizzleEq(monthlyDebts.apartmentId, user.apartmentId));
+  }).from(monthlyDebts).innerJoin(apartments, drizzleEq(monthlyDebts.apartmentId, apartments.id)).where(drizzleEq(monthlyDebts.apartmentId, user.apartmentId));
   return result;
 }
 async function generateDebtsFromCharge(chargeId) {
@@ -1062,7 +1058,7 @@ async function generateDebtsFromCharge(chargeId) {
         });
       }
     } else {
-      const allApartments = await db.select().from(apartments2);
+      const allApartments = await db.select().from(apartments);
       if (allApartments.length === 0) return;
       const apartmentIds = allApartments.map((a) => a.id);
       const existingDebts = await db.select().from(monthlyDebts).where(
@@ -1099,18 +1095,18 @@ async function generateDebtsFromCharge(chargeId) {
     }
     log5.info(`[Debt Generation] Successfully generated debts for charge ${chargeId}`);
   } catch (error) {
-    log5.error(`[Debt Generation] Error generating debts for charge ${chargeId}:`, error);
+    log5.error({ err: error }, `[Debt Generation] Error generating debts for charge ${chargeId}:`);
   }
 }
 async function getAllApartmentsWithDebtStatus(month, sortBy = "floor") {
   const db = await getDb();
   if (!db) return [];
   const { eq: drizzleEq, asc: asc4 } = await import("drizzle-orm");
-  const allApts = await db.select().from(apartments2).orderBy(asc4(apartments2.id));
+  const allApts = await db.select().from(apartments).orderBy(asc4(apartments.id));
   const debts = await db.select({
     id: monthlyDebts.id,
     apartmentId: monthlyDebts.apartmentId,
-    unitName: apartments2.unitName,
+    unitName: apartments.unitName,
     month: monthlyDebts.month,
     totalDue: monthlyDebts.totalDue,
     totalPaid: monthlyDebts.totalPaid,
@@ -1119,8 +1115,8 @@ async function getAllApartmentsWithDebtStatus(month, sortBy = "floor") {
     isPaid: monthlyDebts.isPaid,
     createdAt: monthlyDebts.createdAt,
     updatedAt: monthlyDebts.updatedAt,
-    floorId: apartments2.floorId
-  }).from(monthlyDebts).innerJoin(apartments2, drizzleEq(monthlyDebts.apartmentId, apartments2.id)).where(drizzleEq(monthlyDebts.month, month));
+    floorId: apartments.floorId
+  }).from(monthlyDebts).innerJoin(apartments, drizzleEq(monthlyDebts.apartmentId, apartments.id)).where(drizzleEq(monthlyDebts.month, month));
   const debtMap = new Map(debts.map((d) => [d.apartmentId, d]));
   const allFloors = await db.select().from(floors);
   const floorMap = new Map(allFloors.map((f) => [f.id, f]));
@@ -1180,7 +1176,7 @@ function computeDebtSummary(debts) {
 }
 
 // server/db/notifications.ts
-import { and as and4, desc as desc5 } from "drizzle-orm";
+import { and as and4, desc as desc4 } from "drizzle-orm";
 var log6 = createLogger("notifications");
 async function createNotification(data) {
   const db = await getDb();
@@ -1188,7 +1184,7 @@ async function createNotification(data) {
   try {
     return await db.insert(notifications).values(data);
   } catch (error) {
-    log6.error("[Notifications] Error creating notification:", error);
+    log6.error({ err: error }, "[Notifications] Error creating notification:");
     return null;
   }
 }
@@ -1202,9 +1198,9 @@ async function getUnreadNotifications(userId) {
         drizzleEq(notifications.userId, userId),
         drizzleEq(notifications.isRead, false)
       )
-    ).orderBy(desc5(notifications.createdAt));
+    ).orderBy(desc4(notifications.createdAt));
   } catch (error) {
-    log6.error("[Notifications] Error getting unread notifications:", error);
+    log6.error({ err: error }, "[Notifications] Error getting unread notifications:");
     return [];
   }
 }
@@ -1213,9 +1209,9 @@ async function getUserNotifications(userId, limit = 50) {
   if (!db) return [];
   const { eq: drizzleEq } = await import("drizzle-orm");
   try {
-    return await db.select().from(notifications).where(drizzleEq(notifications.userId, userId)).orderBy(desc5(notifications.createdAt)).limit(limit);
+    return await db.select().from(notifications).where(drizzleEq(notifications.userId, userId)).orderBy(desc4(notifications.createdAt)).limit(limit);
   } catch (error) {
-    log6.error("[Notifications] Error getting user notifications:", error);
+    log6.error({ err: error }, "[Notifications] Error getting user notifications:");
     return [];
   }
 }
@@ -1229,7 +1225,7 @@ async function markNotificationAsRead(notificationId) {
       readAt: /* @__PURE__ */ new Date()
     }).where(drizzleEq(notifications.id, notificationId));
   } catch (error) {
-    log6.error("[Notifications] Error marking notification as read:", error);
+    log6.error({ err: error }, "[Notifications] Error marking notification as read:");
     return null;
   }
 }
@@ -1248,7 +1244,7 @@ async function markAllNotificationsAsRead(userId) {
       )
     );
   } catch (error) {
-    log6.error("[Notifications] Error marking all notifications as read:", error);
+    log6.error({ err: error }, "[Notifications] Error marking all notifications as read:");
     return null;
   }
 }
@@ -1265,7 +1261,7 @@ async function countUnreadNotifications(userId) {
     );
     return parseInt(result[0]?.count) || 0;
   } catch (error) {
-    log6.error("[Notifications] Error counting unread notifications:", error);
+    log6.error({ err: error }, "[Notifications] Error counting unread notifications:");
     return 0;
   }
 }
@@ -1318,13 +1314,13 @@ async function createAuditLog(data) {
 }
 
 // server/db/reports.ts
-import { and as and5, asc as asc3, eq as eq8 } from "drizzle-orm";
+import { and as and5, asc as asc3, desc as desc5, eq as eq8 } from "drizzle-orm";
 var log7 = createLogger("reports");
 async function getMonthlyReportData(apartmentId, month) {
   const db = await getDb();
   if (!db) return null;
   try {
-    const apartment = await db.select().from(apartments2).where(eq8(apartments2.id, apartmentId)).limit(1);
+    const apartment = await db.select().from(apartments).where(eq8(apartments.id, apartmentId)).limit(1);
     if (!apartment[0]) return null;
     const monthPayments = await db.select().from(payments).where(
       and5(
@@ -1338,7 +1334,7 @@ async function getMonthlyReportData(apartmentId, month) {
         eq8(monthlyDebts.month, month)
       )
     );
-    const config = await getCondominiumConfig2();
+    const config = await getCondominiumConfig();
     return {
       apartment: apartment[0],
       payments: monthPayments,
@@ -1347,7 +1343,7 @@ async function getMonthlyReportData(apartmentId, month) {
       month
     };
   } catch (error) {
-    log7.error("[Reports] Error getting monthly report data:", error);
+    log7.error({ err: error }, "[Reports] Error getting monthly report data:");
     return null;
   }
 }
@@ -1359,7 +1355,7 @@ async function getUserPaymentsSummary(userId, limit = 12) {
     if (!user[0] || !user[0].apartmentId) {
       return { payments: [], debts: [], totalPaid: "0", totalPending: "0" };
     }
-    const userPayments = await db.select().from(payments).where(eq8(payments.apartmentId, user[0].apartmentId)).orderBy(desc(payments.submittedAt)).limit(limit);
+    const userPayments = await db.select().from(payments).where(eq8(payments.apartmentId, user[0].apartmentId)).orderBy(desc5(payments.submittedAt)).limit(limit);
     const userDebts = await db.select().from(monthlyDebts).where(
       and5(
         eq8(monthlyDebts.apartmentId, user[0].apartmentId),
@@ -1375,7 +1371,7 @@ async function getUserPaymentsSummary(userId, limit = 12) {
       totalPending: totalPending.toFixed(2)
     };
   } catch (error) {
-    log7.error("[Reports] Error getting user payments summary:", error);
+    log7.error({ err: error }, "[Reports] Error getting user payments summary:");
     return { payments: [], debts: [], totalPaid: "0", totalPending: "0" };
   }
 }
@@ -1383,9 +1379,9 @@ async function getMonthlyDebtsSummary(month) {
   const db = await getDb();
   if (!db) return [];
   try {
-    return await db.select().from(monthlyDebts).where(eq8(monthlyDebts.month, month)).orderBy(desc(monthlyDebts.pendingAmount));
+    return await db.select().from(monthlyDebts).where(eq8(monthlyDebts.month, month)).orderBy(desc5(monthlyDebts.pendingAmount));
   } catch (error) {
-    log7.error("[Reports] Error getting monthly debts summary:", error);
+    log7.error({ err: error }, "[Reports] Error getting monthly debts summary:");
     return [];
   }
 }
@@ -1402,9 +1398,9 @@ async function getPaymentsByStatus(status, month) {
         )
       );
     }
-    return await query.orderBy(desc(payments.submittedAt));
+    return await query.orderBy(desc5(payments.submittedAt));
   } catch (error) {
-    log7.error("[Reports] Error getting payments by status:", error);
+    log7.error({ err: error }, "[Reports] Error getting payments by status:");
     return [];
   }
 }
@@ -1534,12 +1530,12 @@ async function generateExcel(data) {
   const titleCell = worksheet.getCell("A1");
   titleCell.value = data.condominiumName;
   titleCell.font = { size: 16, bold: true };
-  titleCell.alignment = { horizontal: "center", vertical: "center" };
+  titleCell.alignment = { horizontal: "center", vertical: "middle" };
   worksheet.mergeCells("A2:D2");
   const subtitleCell = worksheet.getCell("A2");
   subtitleCell.value = "Estado de Pagos por Apartamento";
   subtitleCell.font = { size: 12, bold: true };
-  subtitleCell.alignment = { horizontal: "center", vertical: "center" };
+  subtitleCell.alignment = { horizontal: "center", vertical: "middle" };
   worksheet.mergeCells("A3:D3");
   const monthCell = worksheet.getCell("A3");
   monthCell.value = `Mes: ${data.month}`;
@@ -1638,7 +1634,7 @@ var appRouter = router({
   // ===== CONFIGURACIÓN DEL CONDOMINIO =====
   config: router({
     get: protectedProcedure.query(async () => {
-      const config = await getCondominiumConfig2();
+      const config = await getCondominiumConfig();
       if (!config) {
         return await initializeCondominiumConfig();
       }
@@ -1655,7 +1651,7 @@ var appRouter = router({
       apartmentNamePattern: z2.string().optional()
     })).mutation(async ({ input }) => {
       const result = await updateCondominiumConfig(input);
-      return await getCondominiumConfig2();
+      return await getCondominiumConfig();
     }),
     initializeStructure: adminProcedure2.mutation(async () => {
       await initializeFloorsAndApartments();
@@ -1666,7 +1662,7 @@ var appRouter = router({
       return result || { success: false };
     }),
     getPatternExamples: adminProcedure2.input(z2.object({ pattern: z2.string() })).query(async ({ input }) => {
-      const config = await getCondominiumConfig2();
+      const config = await getCondominiumConfig();
       if (!config) return [];
       return generatePatternExamples(input.pattern, config.floors || 5, config.apartmentsPerFloor || 6);
     })
@@ -1674,20 +1670,20 @@ var appRouter = router({
   // ===== GESTIÓN DE PISOS Y APARTAMENTOS =====
   floors: router({
     list: protectedProcedure.query(async () => {
-      return await getAllFloors2();
+      return await getAllFloors();
     }),
     withApartments: protectedProcedure.query(async () => {
-      const floors2 = await getAllFloors2();
-      const apartments3 = await getAllApartments2();
+      const floors2 = await getAllFloors();
+      const apartments2 = await getAllApartments();
       return floors2.map((floor) => ({
         ...floor,
-        apartments: apartments3.filter((apt) => apt.floorId === floor.id)
+        apartments: apartments2.filter((apt) => apt.floorId === floor.id)
       }));
     })
   }),
   apartments: router({
     list: protectedProcedure.query(async () => {
-      return await getAllApartments2();
+      return await getAllApartments();
     }),
     byFloor: protectedProcedure.input(z2.object({ floorId: z2.number() })).query(async ({ input }) => {
       return await getApartmentsByFloor(input.floorId);
@@ -1720,7 +1716,7 @@ var appRouter = router({
       isRecurring: z2.boolean().default(true),
       apartmentId: z2.number().optional()
     })).mutation(async ({ input, ctx }) => {
-      const config = await getCondominiumConfig2();
+      const config = await getCondominiumConfig();
       const exchangeRate = config ? parseFloat(config.exchangeRate || "1") : 1;
       let amountInUSD = parseFloat(input.amount);
       if (input.currency === "VES" && exchangeRate > 0) {
@@ -2219,7 +2215,7 @@ var appRouter = router({
         totalDue
       } = computeDebtSummary(debts);
       const apartmentsWithDebtCount = totalApartments - paid;
-      const config = await getCondominiumConfig2();
+      const config = await getCondominiumConfig();
       return {
         month,
         condominiumName: config?.name || "Condominio",
@@ -2246,7 +2242,7 @@ var appRouter = router({
         totalDue
       } = computeDebtSummary(debts);
       const apartmentsWithDebtCount = totalApartments - paid;
-      const config = await getCondominiumConfig2();
+      const config = await getCondominiumConfig();
       const pdfBuffer = await generatePDF({
         month,
         condominiumName: config?.name || "Condominio",
@@ -2280,7 +2276,7 @@ var appRouter = router({
         totalDue
       } = computeDebtSummary(debts);
       const apartmentsWithDebtCount = totalApartments - paid;
-      const config = await getCondominiumConfig2();
+      const config = await getCondominiumConfig();
       const excelBuffer = await generateExcel({
         month,
         condominiumName: config?.name || "Condominio",
@@ -2342,7 +2338,10 @@ async function createContext(opts) {
     if (token) {
       const supabaseUser = await verifySupabaseToken(token);
       if (supabaseUser?.email) {
-        user = await getUserByEmail(supabaseUser.email);
+        const dbUser = await getUserByEmail(supabaseUser.email);
+        if (dbUser) {
+          user = dbUser;
+        }
         if (!user) {
           const newUser = await createUserFromSupabase({
             email: supabaseUser.email,

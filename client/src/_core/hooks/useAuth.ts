@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
+import { supabase, clearSupabaseSession } from "@/_core/supabase";
 import { useCallback, useEffect, useMemo } from "react";
 
 type UseAuthOptions = {
@@ -24,6 +25,20 @@ export function useAuth(options?: UseAuthOptions) {
 
   const logout = useCallback(async () => {
     try {
+      // 1. Cerrar la sesión de Supabase (revoca refresh token y borra la sesión).
+      //    Si la revocación remota falla por red, aún así continuamos.
+      await supabase.auth.signOut();
+    } catch {
+      // Fallo de red durante la revocación: la limpieza local de abajo lo cubre.
+    }
+
+    // 2. Borrado local garantizado: elimina la clave sb-<projectRef>-auth-token
+    //    de localStorage. Sin esto, getSupabaseAccessToken() seguiría devolviendo
+    //    el token anterior y el usuario volvería a ser autenticado al recargar.
+    clearSupabaseSession();
+
+    try {
+      // 3. Notificar al servidor para limpiar la cookie de sesión httpOnly
       await logoutMutation.mutateAsync();
     } catch (error: unknown) {
       if (

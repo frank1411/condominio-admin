@@ -9,8 +9,6 @@ import { createLogger } from "./logger";
 const log = createLogger("vite");
 import viteConfig from "../../vite.config";
 
-import { createLogger } from "./logger";
-
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,

@@ -1,11 +1,9 @@
 import { eq } from "drizzle-orm";
-import { createLogger } from "../_core/logger";
-
-const log = createLogger("condominium");
 import { apartments, condominiumConfig, floors } from "../../drizzle/schema";
+import { createLogger } from "../_core/logger";
 import { getDb } from "./client";
 
-import { createLogger } from "../_core/logger";
+const log = createLogger("condominium");
 
 export async function getCondominiumConfig() {
   const db = await getDb();
@@ -173,7 +171,7 @@ export async function generateAllApartmentNames() {
 
     return { success: true };
   } catch (error) {
-    log.error("Error generating apartment names:", error);
+    log.error({ err: error }, "Error generating apartment names:");
     return null;
   }
 }

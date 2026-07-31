@@ -31,7 +31,10 @@ export async function createContext(
     if (token) {
       const supabaseUser = await verifySupabaseToken(token);
       if (supabaseUser?.email) {
-        user = await db.getUserByEmail(supabaseUser.email);
+        const dbUser = await db.getUserByEmail(supabaseUser.email);
+        if (dbUser) {
+          user = dbUser;
+        }
 
         // Auto-create user on first login if not found
         if (!user) {
