@@ -220,14 +220,43 @@ export const appRouter = router({
         id: z.number(),
         name: z.string().optional(),
         description: z.string().optional(),
-        amount: z.string().optional(),
+        amount: z.string().refine(
+          val => {
+            const n = parseFloat(val);
+            return !isNaN(n) && n > 0;
+          },
+          { message: "El monto debe ser un número positivo mayor a cero" }
+        ).optional(),
         currency: z.enum(["USD", "VES"]).optional(),
         isRecurring: z.boolean().optional(),
-        apartmentId: z.number().optional(),
+        // El alcance (individual/global/apto) es INMUTABLE en edición:
+        // si cambia, se crea/elimina el cobro. No se acepta apartmentId aquí.
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { id, ...data } = input;
+
+        // Si viene monto: convertir VES → USD con la tasa vigente (como en create)
+        if (data.amount !== undefined) {
+          const config = await db.getCondominiumConfig();
+          const exchangeRate = config ? parseFloat(config.exchangeRate || "1") : 1;
+          let amountInUSD = parseFloat(data.amount);
+          const currency = data.currency ?? "USD";
+          if (currency === "VES" && exchangeRate > 0) {
+            amountInUSD = amountInUSD / exchangeRate;
+          }
+          if (isNaN(amountInUSD) || amountInUSD <= 0) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "El monto debe ser un número positivo mayor a cero" });
+          }
+          data.amount = amountInUSD.toFixed(2);
+          data.currency = "USD"; // Siempre guardar en USD
+        }
+
         await db.updateCharge(id, data);
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: "update_charge",
+          details: `Editó cobro: ${data.name ?? id}`,
+        });
         return { success: true };
       }),
 

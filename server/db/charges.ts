@@ -16,10 +16,95 @@ export async function createCharge(data: typeof charges.$inferInsert) {
   return created && created.length > 0 ? created[0] : null;
 }
 
+/**
+ * Actualizar un cobro. COB-04: si cambia el monto, ajusta las deudas VIGENTES
+ * (mes actual) de los aptos a los que aplica el cobro con la diferencia
+ * (nuevo - viejo). Sin lógica de meses históricos — todos los cobros tienen
+ * la misma jerarquía. Si la deuda baja y el apto ya pagó más de lo que ahora
+ * debe, el excedente se convierte en saldo a favor (creditBalance).
+ * El alcance (individual/global/apto) NO se edita — se bloquea en la UI
+ * (se crea/elimina el cobro si cambia el alcance). Transaccional.
+ */
 export async function updateCharge(id: number, data: Partial<typeof charges.$inferInsert>) {
   const db = await getDb();
   if (!db) return null;
-  return await db.update(charges).set(data).where(eq(charges.id, id));
+
+  return await db.transaction(async (tx) => {
+    const chargeResult = await tx.select().from(charges).where(eq(charges.id, id)).limit(1);
+    if (!chargeResult || chargeResult.length === 0) return null;
+    const charge = chargeResult[0];
+
+    // COB-04: solo el monto cambia deudas (alcance inmutable en edición)
+    if (data.amount !== undefined) {
+      const oldAmount = parseFloat(charge.amount as unknown as string) || 0;
+      const newAmount = parseFloat(data.amount as unknown as string) || 0;
+      const delta = newAmount - oldAmount;
+      if (Math.abs(delta) > 0.005) {
+        // Aptos afectados por este cobro (individual → 1; global → todos)
+        let affectedApartmentIds: number[] = [];
+        if (charge.apartmentId) {
+          affectedApartmentIds = [charge.apartmentId];
+        } else {
+          const all = await tx.select({ id: apartments.id }).from(apartments);
+          affectedApartmentIds = all.map(a => a.id);
+        }
+
+        // Deudas vigentes (mes actual) de los aptos afectados
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const debts = await tx
+          .select()
+          .from(monthlyDebts)
+          .where(and(
+            eq(monthlyDebts.month, currentMonth),
+            inArray(monthlyDebts.apartmentId, affectedApartmentIds)
+          ));
+
+        for (const debt of debts) {
+          const due = parseFloat(debt.totalDue as unknown as string) || 0;
+          const paid = parseFloat(debt.totalPaid as unknown as string) || 0;
+          const newDue = Math.max(0, due + delta);
+
+          // Excedente pagado sobre la nueva deuda → creditBalance del apto
+          let excessToCredit = 0;
+          let adjustedPaid = paid;
+          if (paid > newDue) {
+            excessToCredit = paid - newDue;
+            adjustedPaid = newDue;
+          }
+          const newPending = Math.max(0, newDue - adjustedPaid);
+
+          if (excessToCredit > 0.005) {
+            const apt = await tx
+              .select({ creditBalance: apartments.creditBalance })
+              .from(apartments)
+              .where(eq(apartments.id, debt.apartmentId))
+              .limit(1);
+            const currentCredit = apt.length > 0 ? (parseFloat(apt[0].creditBalance as unknown as string) || 0) : 0;
+            await tx.update(apartments)
+              .set({ creditBalance: (currentCredit + excessToCredit).toFixed(2) })
+              .where(eq(apartments.id, debt.apartmentId));
+          }
+
+          if (newDue <= 0 && newPending <= 0 && adjustedPaid <= 0.005) {
+            await tx.delete(monthlyDebts).where(eq(monthlyDebts.id, debt.id));
+          } else {
+            await tx.update(monthlyDebts)
+              .set({
+                totalDue: newDue.toFixed(2),
+                totalPaid: adjustedPaid.toFixed(2),
+                pendingAmount: newPending.toFixed(2),
+                isPaid: newPending <= 0.005,
+              })
+              .where(eq(monthlyDebts.id, debt.id));
+          }
+        }
+      }
+    }
+
+    await tx.update(charges).set(data).where(eq(charges.id, id));
+    return true;
+  });
 }
 
 /**

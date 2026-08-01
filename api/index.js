@@ -671,7 +671,60 @@ async function createCharge(data) {
 async function updateCharge(id, data) {
   const db = await getDb();
   if (!db) return null;
-  return await db.update(charges).set(data).where(eq3(charges.id, id));
+  return await db.transaction(async (tx) => {
+    const chargeResult = await tx.select().from(charges).where(eq3(charges.id, id)).limit(1);
+    if (!chargeResult || chargeResult.length === 0) return null;
+    const charge = chargeResult[0];
+    if (data.amount !== void 0) {
+      const oldAmount = parseFloat(charge.amount) || 0;
+      const newAmount = parseFloat(data.amount) || 0;
+      const delta = newAmount - oldAmount;
+      if (Math.abs(delta) > 5e-3) {
+        let affectedApartmentIds = [];
+        if (charge.apartmentId) {
+          affectedApartmentIds = [charge.apartmentId];
+        } else {
+          const all = await tx.select({ id: apartments.id }).from(apartments);
+          affectedApartmentIds = all.map((a) => a.id);
+        }
+        const now = /* @__PURE__ */ new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const debts = await tx.select().from(monthlyDebts).where(and2(
+          eq3(monthlyDebts.month, currentMonth),
+          inArray(monthlyDebts.apartmentId, affectedApartmentIds)
+        ));
+        for (const debt of debts) {
+          const due = parseFloat(debt.totalDue) || 0;
+          const paid = parseFloat(debt.totalPaid) || 0;
+          const newDue = Math.max(0, due + delta);
+          let excessToCredit = 0;
+          let adjustedPaid = paid;
+          if (paid > newDue) {
+            excessToCredit = paid - newDue;
+            adjustedPaid = newDue;
+          }
+          const newPending = Math.max(0, newDue - adjustedPaid);
+          if (excessToCredit > 5e-3) {
+            const apt = await tx.select({ creditBalance: apartments.creditBalance }).from(apartments).where(eq3(apartments.id, debt.apartmentId)).limit(1);
+            const currentCredit = apt.length > 0 ? parseFloat(apt[0].creditBalance) || 0 : 0;
+            await tx.update(apartments).set({ creditBalance: (currentCredit + excessToCredit).toFixed(2) }).where(eq3(apartments.id, debt.apartmentId));
+          }
+          if (newDue <= 0 && newPending <= 0 && adjustedPaid <= 5e-3) {
+            await tx.delete(monthlyDebts).where(eq3(monthlyDebts.id, debt.id));
+          } else {
+            await tx.update(monthlyDebts).set({
+              totalDue: newDue.toFixed(2),
+              totalPaid: adjustedPaid.toFixed(2),
+              pendingAmount: newPending.toFixed(2),
+              isPaid: newPending <= 5e-3
+            }).where(eq3(monthlyDebts.id, debt.id));
+          }
+        }
+      }
+    }
+    await tx.update(charges).set(data).where(eq3(charges.id, id));
+    return true;
+  });
 }
 async function deleteCharge(id) {
   const db = await getDb();
@@ -1896,13 +1949,39 @@ var appRouter = router({
       id: z2.number(),
       name: z2.string().optional(),
       description: z2.string().optional(),
-      amount: z2.string().optional(),
+      amount: z2.string().refine(
+        (val) => {
+          const n = parseFloat(val);
+          return !isNaN(n) && n > 0;
+        },
+        { message: "El monto debe ser un n\xFAmero positivo mayor a cero" }
+      ).optional(),
       currency: z2.enum(["USD", "VES"]).optional(),
-      isRecurring: z2.boolean().optional(),
-      apartmentId: z2.number().optional()
-    })).mutation(async ({ input }) => {
+      isRecurring: z2.boolean().optional()
+      // El alcance (individual/global/apto) es INMUTABLE en edición:
+      // si cambia, se crea/elimina el cobro. No se acepta apartmentId aquí.
+    })).mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
+      if (data.amount !== void 0) {
+        const config = await getCondominiumConfig();
+        const exchangeRate = config ? parseFloat(config.exchangeRate || "1") : 1;
+        let amountInUSD = parseFloat(data.amount);
+        const currency = data.currency ?? "USD";
+        if (currency === "VES" && exchangeRate > 0) {
+          amountInUSD = amountInUSD / exchangeRate;
+        }
+        if (isNaN(amountInUSD) || amountInUSD <= 0) {
+          throw new TRPCError3({ code: "BAD_REQUEST", message: "El monto debe ser un n\xFAmero positivo mayor a cero" });
+        }
+        data.amount = amountInUSD.toFixed(2);
+        data.currency = "USD";
+      }
       await updateCharge(id, data);
+      await createAuditLog({
+        userId: ctx.user.id,
+        action: "update_charge",
+        details: `Edit\xF3 cobro: ${data.name ?? id}`
+      });
       return { success: true };
     }),
     delete: adminProcedure2.input(z2.object({ id: z2.number() })).mutation(async ({ input }) => {

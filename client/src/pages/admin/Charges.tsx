@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -21,7 +21,10 @@ export default function AdminCharges() {
   const { data: charges, isLoading } = trpc.charges.list.useQuery();
   const { data: apartments } = trpc.apartments.list.useQuery();
   const createCharge = trpc.charges.create.useMutation();
+  const updateCharge = trpc.charges.update.useMutation();
   const deleteCharge = trpc.charges.delete.useMutation();
+
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -31,6 +34,38 @@ export default function AdminCharges() {
     isIndividual: false,
     apartmentId: undefined as number | undefined,
   });
+
+  const resetForm = () => {
+    setEditingId(null);
+    setFormData({
+      name: "",
+      description: "",
+      amount: "",
+      currency: "USD",
+      isIndividual: false,
+      apartmentId: undefined,
+    });
+  };
+
+  const handleEdit = (charge: NonNullable<typeof charges>[number]) => {
+    setEditingId(charge.id);
+    setFormData({
+      name: charge.name,
+      description: charge.description || "",
+      amount: parseFloat(charge.amount as unknown as string).toFixed(2),
+      currency: (charge.currency as "USD" | "VES") || "USD",
+      isIndividual: !!charge.apartmentId,
+      apartmentId: charge.apartmentId || undefined,
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const invalidateAll = () =>
+    Promise.all([
+      utils.charges.invalidate(),
+      utils.debts.invalidate(),
+      utils.reports.invalidate(),
+    ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,27 +81,30 @@ export default function AdminCharges() {
     }
 
     try {
-      await createCharge.mutateAsync(formData);
-      toast.success("Cobro creado exitosamente");
-      setFormData({
-        name: "",
-        description: "",
-        amount: "",
-        currency: "USD",
-        isIndividual: false,
-        apartmentId: undefined,
-      });
-      // Crear un cobro genera deudas nuevas: invalidar todo lo derivado
-      await Promise.all([
-        utils.charges.invalidate(),
-        utils.debts.invalidate(),
-        utils.reports.invalidate(),
-      ]);
+      if (editingId !== null) {
+        // El alcance (individual/global/apto) es inmutable en edición
+        await updateCharge.mutateAsync({
+          id: editingId,
+          name: formData.name,
+          description: formData.description,
+          amount: formData.amount,
+          currency: formData.currency,
+        });
+        toast.success("Cobro actualizado — deudas del mes ajustadas");
+      } else {
+        await createCharge.mutateAsync(formData);
+        toast.success("Cobro creado exitosamente");
+      }
+      resetForm();
+      // Editar/crear un cobro cambia las deudas: invalidar todo lo derivado
+      await invalidateAll();
     } catch (error) {
       const message =
         error instanceof Error && error.message
           ? error.message
-          : "Error al crear el cobro";
+          : editingId !== null
+            ? "Error al actualizar el cobro"
+            : "Error al crear el cobro";
       toast.error(message);
     }
   };
@@ -112,11 +150,24 @@ export default function AdminCharges() {
         <p className="text-gray-600 mt-2">Administra los cobros adicionales del condominio</p>
       </div>
 
-      {/* Formulario de Nuevo Cobro */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Crear Nuevo Cobro</CardTitle>
-          <CardDescription>Agrega un nuevo cobro adicional a las mensualidades</CardDescription>
+      {/* Formulario de Nuevo/Editar Cobro */}
+      <Card className={editingId !== null ? "border-blue-400 ring-2 ring-blue-100" : ""}>
+        <CardHeader className="flex flex-row items-start justify-between">
+          <div>
+            <CardTitle>
+              {editingId !== null ? `Editando: ${formData.name || "Cobro"}` : "Crear Nuevo Cobro"}
+            </CardTitle>
+            <CardDescription>
+              {editingId !== null
+                ? "Los cambios de monto ajustarán las deudas vigentes del mes automáticamente"
+                : "Agrega un nuevo cobro adicional a las mensualidades"}
+            </CardDescription>
+          </div>
+          {editingId !== null && (
+            <Button variant="ghost" size="sm" onClick={resetForm}>
+              Cancelar edición
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -164,9 +215,19 @@ export default function AdminCharges() {
             </div>
 
             <div className="border-t pt-4">
-              <label className="flex items-center gap-2 cursor-pointer mb-4">
+              <label
+                className={`flex items-center gap-2 mb-4 ${
+                  editingId !== null ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                }`}
+                title={
+                  editingId !== null
+                    ? "El alcance del cobro no se puede cambiar en edición. Elimina y crea un nuevo cobro si necesitas otro alcance."
+                    : undefined
+                }
+              >
                 <Checkbox
                   checked={formData.isIndividual}
+                  disabled={editingId !== null}
                   onCheckedChange={(checked) =>
                     setFormData({ ...formData, isIndividual: checked as boolean, apartmentId: undefined })
                   }
@@ -179,6 +240,7 @@ export default function AdminCharges() {
                   <Label>Seleccionar Apartamento</Label>
                   <Select
                     value={formData.apartmentId?.toString() || ""}
+                    disabled={editingId !== null}
                     onValueChange={(value) =>
                       setFormData({ ...formData, apartmentId: parseInt(value) })
                     }
@@ -209,7 +271,7 @@ export default function AdminCharges() {
             </div>
 
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-              Crear Cobro
+              {editingId !== null ? "Guardar Cambios" : "Crear Cobro"}
             </Button>
           </form>
         </CardContent>
@@ -249,6 +311,15 @@ export default function AdminCharges() {
                         {charge.currency} {parseFloat(charge.amount).toFixed(2)}
                       </p>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(charge)}
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      title="Editar cobro"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
