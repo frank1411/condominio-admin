@@ -98,6 +98,7 @@ export const apartments = pgTable("apartments", {
   floorId: integer("floorId").notNull(), // FK a floors
   apartmentNumber: varchar("apartmentNumber", { length: 50 }).notNull(), // "101", "201", etc.
   unitName: varchar("unitName", { length: 100 }), // Nombre descriptivo
+  creditBalance: decimal("creditBalance", { precision: 10, scale: 2 }).default("0.00"), // Saldo a favor (pago de más) aplicable a deudas futuras
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

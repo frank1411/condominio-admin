@@ -219,6 +219,11 @@ export default function AdminDashboard() {
                   <p className="text-sm text-gray-600">
                     Debido: ${parseFloat(debt.totalDue).toFixed(2)} {debt.currency}
                   </p>
+                  {parseFloat(debt.creditBalance || "0") > 0 && (
+                    <p className="text-xs text-green-600">
+                      Saldo a favor: ${parseFloat(debt.creditBalance || "0").toFixed(2)}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="text-right">

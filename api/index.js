@@ -313,6 +313,8 @@ var apartments = pgTable("apartments", {
   // "101", "201", etc.
   unitName: varchar("unitName", { length: 100 }),
   // Nombre descriptivo
+  creditBalance: decimal("creditBalance", { precision: 10, scale: 2 }).default("0.00"),
+  // Saldo a favor (pago de más) aplicable a deudas futuras
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
 var charges = pgTable("charges", {
@@ -845,10 +847,20 @@ async function applyPaymentToDebts(apartmentId, paymentAmount, tx) {
         remainingPayment = 0;
       }
     }
-    return { success: true, appliedAmount: appliedTotal };
+    let creditCreated = 0;
+    if (remainingPayment > 5e-3) {
+      const apartment = await db.select().from(apartments).where(drizzleEq(apartments.id, apartmentId)).limit(1);
+      if (apartment.length > 0) {
+        const currentCredit = parseFloat(apartment[0].creditBalance || "0") || 0;
+        creditCreated = remainingPayment;
+        const newCredit = (currentCredit + remainingPayment).toFixed(2);
+        await db.update(apartments).set({ creditBalance: newCredit }).where(drizzleEq(apartments.id, apartmentId));
+      }
+    }
+    return { success: true, appliedAmount: appliedTotal, creditCreated };
   } catch (error) {
     log4.error({ err: error }, "[Payment Liquidation] Error applying payment to debts:");
-    return { success: false, appliedAmount: 0 };
+    return { success: false, appliedAmount: 0, creditCreated: 0 };
   }
 }
 async function validatePaymentAmount(apartmentId, paymentAmount, tx) {
@@ -856,10 +868,17 @@ async function validatePaymentAmount(apartmentId, paymentAmount, tx) {
   if (!db) return { valid: false, reason: "Base de datos no disponible" };
   const { eq: drizzleEq, and: and7 } = await import("drizzle-orm");
   try {
+    if (!paymentAmount || paymentAmount <= 0) {
+      return { valid: false, reason: "El monto del pago debe ser mayor a cero" };
+    }
     const pendingDebts = await db.select().from(monthlyDebts).where(and7(
       drizzleEq(monthlyDebts.apartmentId, apartmentId),
       drizzleEq(monthlyDebts.isPaid, false)
     ));
+    const apartment = await db.select({ id: apartments.id }).from(apartments).where(drizzleEq(apartments.id, apartmentId)).limit(1);
+    if (apartment.length === 0) {
+      return { valid: false, reason: "Apartamento no encontrado" };
+    }
     const totalPending = pendingDebts.reduce(
       (sum, debt) => {
         const pending = parseFloat(debt.pendingAmount || "0") || 0;
@@ -868,10 +887,10 @@ async function validatePaymentAmount(apartmentId, paymentAmount, tx) {
       0
     );
     if (paymentAmount > totalPending + 0.01) {
-      return {
-        valid: false,
-        reason: `El monto del pago ($${paymentAmount.toFixed(2)}) excede la deuda pendiente ($${totalPending.toFixed(2)})`
-      };
+      log4.info(
+        { apartmentId, paymentAmount, totalPending },
+        "[Payment Validation] Payment exceeds pending debt \u2014 excess will become credit balance"
+      );
     }
     return { valid: true };
   } catch (error) {
@@ -960,8 +979,9 @@ async function approvePaymentWithValidations(paymentId, reviewedBy, notes) {
       });
       return {
         success: true,
-        message: "Pago aprobado exitosamente",
-        appliedAmount: liquidationResult?.appliedAmount
+        message: liquidationResult?.creditCreated && liquidationResult.creditCreated > 5e-3 ? `Pago aprobado exitosamente: $${(liquidationResult.appliedAmount || 0).toFixed(2)} aplicados a deuda y $${liquidationResult.creditCreated.toFixed(2)} como saldo a favor` : "Pago aprobado exitosamente",
+        appliedAmount: liquidationResult?.appliedAmount,
+        creditCreated: liquidationResult?.creditCreated
       };
     });
   } catch (error) {
@@ -1069,9 +1089,28 @@ async function getAllUserDebts(userId) {
     currency: monthlyDebts.currency,
     isPaid: monthlyDebts.isPaid,
     createdAt: monthlyDebts.createdAt,
-    updatedAt: monthlyDebts.updatedAt
+    updatedAt: monthlyDebts.updatedAt,
+    creditBalance: apartments.creditBalance
   }).from(monthlyDebts).innerJoin(apartments, drizzleEq(monthlyDebts.apartmentId, apartments.id)).where(drizzleEq(monthlyDebts.apartmentId, user.apartmentId));
   return result;
+}
+async function applyCreditToDebt(db, debt, apt) {
+  const pending = parseFloat(debt.pendingAmount);
+  if (!pending || pending <= 0) return;
+  const credit = parseFloat(apt.creditBalance || "0") || 0;
+  if (credit <= 0) return;
+  const creditToApply = Math.min(credit, pending);
+  const newPending = pending - creditToApply;
+  const newCredit = credit - creditToApply;
+  await db.update(apartments).set({ creditBalance: newCredit.toFixed(2) }).where(eq5(apartments.id, apt.id));
+  await db.update(monthlyDebts).set({
+    pendingAmount: newPending.toFixed(2),
+    isPaid: newPending <= 5e-3
+  }).where(eq5(monthlyDebts.id, debt.id));
+  log5.info(
+    { apartmentId: apt.id, month: debt.month, creditToApply, newPending },
+    "[Debt Generation] Applied credit balance to debt"
+  );
 }
 async function generateDebtsFromCharge(chargeId) {
   const db = await getDb();
@@ -1111,6 +1150,18 @@ async function generateDebtsFromCharge(chargeId) {
           isPaid: false
         });
       }
+      const creditApt = await db.select({ id: apartments.id, creditBalance: apartments.creditBalance }).from(apartments).where(eq5(apartments.id, chargeData.apartmentId)).limit(1);
+      if (creditApt.length > 0 && (parseFloat(creditApt[0].creditBalance || "0") || 0) > 0) {
+        const freshDebt = await db.select().from(monthlyDebts).where(
+          and4(
+            eq5(monthlyDebts.apartmentId, chargeData.apartmentId),
+            eq5(monthlyDebts.month, month)
+          )
+        ).limit(1);
+        if (freshDebt.length > 0) {
+          await applyCreditToDebt(db, freshDebt[0], creditApt[0]);
+        }
+      }
     } else {
       const allApartments = await db.select().from(apartments);
       if (allApartments.length === 0) return;
@@ -1145,6 +1196,25 @@ async function generateDebtsFromCharge(chargeId) {
       }
       if (toInsert.length > 0) {
         await db.insert(monthlyDebts).values(toInsert);
+      }
+      const aptsWithCredit = allApartments.filter(
+        (a) => (parseFloat(a.creditBalance || "0") || 0) > 0
+      );
+      if (aptsWithCredit.length > 0) {
+        const creditAptIds = aptsWithCredit.map((a) => a.id);
+        const creditDebts = await db.select().from(monthlyDebts).where(
+          and4(
+            eq5(monthlyDebts.month, month),
+            inArray2(monthlyDebts.apartmentId, creditAptIds)
+          )
+        );
+        const creditDebtMap = new Map(creditDebts.map((d) => [d.apartmentId, d]));
+        for (const apt of aptsWithCredit) {
+          const debt = creditDebtMap.get(apt.id);
+          if (debt) {
+            await applyCreditToDebt(db, debt, apt);
+          }
+        }
       }
     }
     log5.info(`[Debt Generation] Successfully generated debts for charge ${chargeId}`);
@@ -1192,7 +1262,9 @@ async function getAllApartmentsWithDebtStatus(month, sortBy = "floor") {
       updatedAt: debt?.updatedAt,
       floorId: apt.floorId,
       floorName: floor?.floorName || `Piso ${floor?.floorNumber}`,
-      apartmentNumber: apt.apartmentNumber
+      apartmentNumber: apt.apartmentNumber,
+      creditBalance: apt.creditBalance || "0.00"
+      // saldo a favor del apartamento
     };
   });
   if (sortBy === "name") {

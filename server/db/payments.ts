@@ -188,10 +188,31 @@ export async function applyPaymentToDebts(
       }
     }
     
-    return { success: true, appliedAmount: appliedTotal };
+    // Si el pago excede la deuda pendiente total, el excedente se convierte
+    // en saldo a favor (crédito) del apartamento, aplicable a meses futuros.
+    let creditCreated = 0;
+    if (remainingPayment > 0.005) {
+      const apartment = await db
+        .select()
+        .from(apartments)
+        .where(drizzleEq(apartments.id, apartmentId))
+        .limit(1);
+      
+      if (apartment.length > 0) {
+        const currentCredit = parseFloat(apartment[0].creditBalance || "0") || 0;
+        creditCreated = remainingPayment;
+        const newCredit = (currentCredit + remainingPayment).toFixed(2);
+        
+        await db.update(apartments)
+          .set({ creditBalance: newCredit })
+          .where(drizzleEq(apartments.id, apartmentId));
+      }
+    }
+    
+    return { success: true, appliedAmount: appliedTotal, creditCreated };
   } catch (error) {
     log.error({ err: error }, "[Payment Liquidation] Error applying payment to debts:");
-    return { success: false, appliedAmount: 0 };
+    return { success: false, appliedAmount: 0, creditCreated: 0 };
   }
 }
 
@@ -199,7 +220,10 @@ export async function applyPaymentToDebts(
 // ===== FASE 1: TRANSACCIONES ACID Y VALIDACIONES =====
 
 /**
- * Validar que el monto del pago no exceda la deuda pendiente total del apartamento
+ * Validar el monto del pago.
+ * El excedente sobre la deuda pendiente YA NO es un error: se convierte en
+ * saldo a favor (crédito) del apartamento, aplicable a deudas futuras.
+ * Solo se rechazan montos no positivos o errores de base de datos.
  */
 
 export async function validatePaymentAmount(
@@ -213,7 +237,14 @@ export async function validatePaymentAmount(
   const { eq: drizzleEq, and } = await import('drizzle-orm');
   
   try {
-    // Obtener deudas pendientes del apartamento
+    // El monto positivo ya está validado en el router (zod). Aquí solo
+    // verificamos consistencia defensiva y que el apartamento exista.
+    if (!paymentAmount || paymentAmount <= 0) {
+      return { valid: false, reason: "El monto del pago debe ser mayor a cero" };
+    }
+
+    // Obtener deudas pendientes del apartamento (verificación de consistencia,
+    // no bloqueante: el excedente pasa a saldo a favor)
     const pendingDebts = await db
       .select()
       .from(monthlyDebts)
@@ -221,8 +252,19 @@ export async function validatePaymentAmount(
         drizzleEq(monthlyDebts.apartmentId, apartmentId),
         drizzleEq(monthlyDebts.isPaid, false)
       ));
-    
-    // Calcular deuda total pendiente
+
+    // Verificar que el apartamento exista
+    const apartment = await db
+      .select({ id: apartments.id })
+      .from(apartments)
+      .where(drizzleEq(apartments.id, apartmentId))
+      .limit(1);
+
+    if (apartment.length === 0) {
+      return { valid: false, reason: "Apartamento no encontrado" };
+    }
+
+    // Si el pago excede la deuda, el excedente se registra como saldo a favor.
     const totalPending = pendingDebts.reduce(
       (sum: number, debt: { pendingAmount: string | null }) => {
         const pending = parseFloat(debt.pendingAmount || "0") || 0;
@@ -230,12 +272,13 @@ export async function validatePaymentAmount(
       },
       0
     );
-    
-    if (paymentAmount > totalPending + 0.01) { // Permitir pequeños errores de redondeo
-      return {
-        valid: false,
-        reason: `El monto del pago ($${paymentAmount.toFixed(2)}) excede la deuda pendiente ($${totalPending.toFixed(2)})`
-      };
+
+    if (paymentAmount > totalPending + 0.01) {
+      // No es un error: el excedente irá a creditBalance (saldo a favor).
+      log.info(
+        { apartmentId, paymentAmount, totalPending },
+        "[Payment Validation] Payment exceeds pending debt — excess will become credit balance"
+      );
     }
     
     return { valid: true };
@@ -357,6 +400,7 @@ export async function approvePaymentWithValidations(
   success: boolean;
   message: string;
   appliedAmount?: number;
+  creditCreated?: number;
 }> {
   const db = await getDb();
   if (!db) {
@@ -423,8 +467,11 @@ export async function approvePaymentWithValidations(
 
       return {
         success: true,
-        message: "Pago aprobado exitosamente",
+        message: liquidationResult?.creditCreated && liquidationResult.creditCreated > 0.005
+          ? `Pago aprobado exitosamente: $${(liquidationResult.appliedAmount || 0).toFixed(2)} aplicados a deuda y $${liquidationResult.creditCreated.toFixed(2)} como saldo a favor`
+          : "Pago aprobado exitosamente",
         appliedAmount: liquidationResult?.appliedAmount,
+        creditCreated: liquidationResult?.creditCreated,
       };
     });
   } catch (error) {

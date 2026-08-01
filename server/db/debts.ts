@@ -60,10 +60,10 @@ export async function getDebtsByMonth(month: string) {
 export async function getAllUserDebts(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const user = await getUserById(userId);
   if (!user || !user.apartmentId) return [];
-  
+
   const { eq: drizzleEq } = await import('drizzle-orm');
   const result = await db
     .select({
@@ -78,11 +78,49 @@ export async function getAllUserDebts(userId: number) {
       isPaid: monthlyDebts.isPaid,
       createdAt: monthlyDebts.createdAt,
       updatedAt: monthlyDebts.updatedAt,
+      creditBalance: apartments.creditBalance,
     })
     .from(monthlyDebts)
     .innerJoin(apartments, drizzleEq(monthlyDebts.apartmentId, apartments.id))
     .where(drizzleEq(monthlyDebts.apartmentId, user.apartmentId));
   return result;
+}
+
+/**
+ * Aplica el saldo a favor (crédito) del apartamento a una deuda pendiente.
+ * Reduce pendingAmount con el crédito disponible, consume creditBalance y
+ * marca la deuda como pagada si queda en 0.
+ */
+async function applyCreditToDebt(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  debt: typeof monthlyDebts.$inferSelect,
+  apt: { id: number; creditBalance: string | null }
+) {
+  const pending = parseFloat(debt.pendingAmount as unknown as string);
+  if (!pending || pending <= 0) return;
+
+  const credit = parseFloat(apt.creditBalance || "0") || 0;
+  if (credit <= 0) return;
+
+  const creditToApply = Math.min(credit, pending);
+  const newPending = pending - creditToApply;
+  const newCredit = credit - creditToApply;
+
+  await db.update(apartments)
+    .set({ creditBalance: newCredit.toFixed(2) })
+    .where(eq(apartments.id, apt.id));
+
+  await db.update(monthlyDebts)
+    .set({
+      pendingAmount: newPending.toFixed(2),
+      isPaid: newPending <= 0.005,
+    })
+    .where(eq(monthlyDebts.id, debt.id));
+
+  log.info(
+    { apartmentId: apt.id, month: debt.month, creditToApply, newPending },
+    "[Debt Generation] Applied credit balance to debt"
+  );
 }
 
 export async function generateDebtsFromCharge(chargeId: number) {
@@ -138,6 +176,30 @@ export async function generateDebtsFromCharge(chargeId: number) {
           isPaid: false,
         });
       }
+
+      // Aplicar saldo a favor (crédito) del apartamento a la deuda del mes
+      const creditApt = await db
+        .select({ id: apartments.id, creditBalance: apartments.creditBalance })
+        .from(apartments)
+        .where(eq(apartments.id, chargeData.apartmentId))
+        .limit(1);
+
+      if (creditApt.length > 0 && (parseFloat(creditApt[0].creditBalance || "0") || 0) > 0) {
+        const freshDebt = await db
+          .select()
+          .from(monthlyDebts)
+          .where(
+            and(
+              eq(monthlyDebts.apartmentId, chargeData.apartmentId),
+              eq(monthlyDebts.month, month)
+            )
+          )
+          .limit(1);
+
+        if (freshDebt.length > 0) {
+          await applyCreditToDebt(db, freshDebt[0], creditApt[0]);
+        }
+      }
     } else {
       // Si es cobro global, generar deuda para todos los apartamentos
       const allApartments = await db.select().from(apartments);
@@ -190,6 +252,33 @@ export async function generateDebtsFromCharge(chargeId: number) {
       // Bulk INSERT: todas las deudas nuevas en 1 sola query
       if (toInsert.length > 0) {
         await db.insert(monthlyDebts).values(toInsert);
+      }
+
+      // Aplicar saldo a favor (crédito) a los aptos que tengan crédito disponible.
+      // Batch: primero filtrar aptos con crédito, luego sus deudas del mes.
+      const aptsWithCredit = allApartments.filter(
+        a => (parseFloat(a.creditBalance || "0") || 0) > 0
+      );
+
+      if (aptsWithCredit.length > 0) {
+        const creditAptIds = aptsWithCredit.map(a => a.id);
+        const creditDebts = await db
+          .select()
+          .from(monthlyDebts)
+          .where(
+            and(
+              eq(monthlyDebts.month, month),
+              inArray(monthlyDebts.apartmentId, creditAptIds)
+            )
+          );
+
+        const creditDebtMap = new Map(creditDebts.map(d => [d.apartmentId, d]));
+        for (const apt of aptsWithCredit) {
+          const debt = creditDebtMap.get(apt.id);
+          if (debt) {
+            await applyCreditToDebt(db, debt, apt);
+          }
+        }
       }
     }
 
@@ -310,6 +399,7 @@ export async function getAllApartmentsWithDebtStatus(month: string, sortBy: 'flo
       floorId: apt.floorId,
       floorName: floor?.floorName || `Piso ${floor?.floorNumber}`,
       apartmentNumber: apt.apartmentNumber,
+      creditBalance: apt.creditBalance || "0.00", // saldo a favor del apartamento
     };
   });
   

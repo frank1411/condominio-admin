@@ -1,0 +1,1 @@
+ALTER TABLE "apartments" ADD COLUMN "creditBalance" numeric(10, 2) DEFAULT '0.00';
