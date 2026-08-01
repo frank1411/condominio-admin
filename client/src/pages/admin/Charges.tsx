@@ -47,6 +47,13 @@ export default function AdminCharges() {
     });
   };
 
+  // Resolver el nombre del apartamento a partir de su id (para badges de alcance)
+  const getApartmentLabel = (id: number | null | undefined) => {
+    if (!id) return null;
+    const apt = apartments?.find((a) => a.id === id);
+    return apt ? apt.unitName || `Apt. ${apt.apartmentNumber}` : `Apt. #${id}`;
+  };
+
   const handleEdit = (charge: NonNullable<typeof charges>[number]) => {
     setEditingId(charge.id);
     setFormData({
@@ -235,6 +242,22 @@ export default function AdminCharges() {
                 <span className="font-medium">Cobro individual (solo para un apartamento)</span>
               </label>
 
+              {editingId !== null && (
+                <p className="text-sm text-gray-600 mb-4 -mt-2">
+                  {formData.isIndividual && formData.apartmentId ? (
+                    <>
+                      Alcance actual: <span className="font-semibold">Individual</span> ·{" "}
+                      <span className="font-semibold">{getApartmentLabel(formData.apartmentId)}</span>
+                    </>
+                  ) : (
+                    <>
+                      Alcance actual: <span className="font-semibold">Global</span> (todos los apartamentos)
+                    </>
+                  )}{" "}
+                  — no editable en esta pantalla
+                </p>
+              )}
+
               {formData.isIndividual && (
                 <div>
                   <Label>Seleccionar Apartamento</Label>
@@ -292,10 +315,16 @@ export default function AdminCharges() {
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
                 >
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium">{charge.name}</p>
-                      {charge.apartmentId && (
-                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Individual</span>
+                      {charge.apartmentId ? (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full whitespace-nowrap">
+                          Individual · {getApartmentLabel(charge.apartmentId)}
+                        </span>
+                      ) : (
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full whitespace-nowrap">
+                          Global
+                        </span>
                       )}
                     </div>
                     {charge.description && (
