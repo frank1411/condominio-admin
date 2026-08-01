@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull } from "drizzle-orm";
 import { apartments, charges, monthlyDebts } from "../../drizzle/schema";
 import { getDb } from "./client";
 
@@ -8,9 +8,43 @@ export async function getAllCharges() {
   return await db.select().from(charges).where(eq(charges.isActive, true));
 }
 
+/**
+ * EDG-03 (MEJORA-007): rechazar doble-submit / doble POST de un cobro
+ * idéntico (mismo nombre + monto + alcance) creado en los últimos 2 min.
+ * Defensa server-side — la UI ya deshabilita el botón.
+ */
+const RECENT_CHARGE_WINDOW_MS = 2 * 60 * 1000;
+
 export async function createCharge(data: typeof charges.$inferInsert) {
   const db = await getDb();
   if (!db) return null;
+
+  // Guard anti-duplicado: mismo name + amount + apartmentId reciente
+  const conditions: any[] = [
+    eq(charges.isActive, true),
+    eq(charges.name, data.name || ""),
+    eq(charges.amount, String(data.amount || "")),
+    gt(charges.createdAt, new Date(Date.now() - RECENT_CHARGE_WINDOW_MS)),
+  ];
+  if (data.apartmentId) {
+    conditions.push(eq(charges.apartmentId, data.apartmentId));
+  } else {
+    conditions.push(isNull(charges.apartmentId));
+  }
+  const recent = await db
+    .select({ id: charges.id })
+    .from(charges)
+    .where(and(...conditions))
+    .limit(1);
+
+  if (recent.length > 0) {
+    const err = new Error(
+      "Este cobro ya fue creado hace un momento (mismo nombre, monto y alcance). ¿Doble clic?"
+    ) as Error & { status?: number };
+    err.status = 400;
+    throw err;
+  }
+
   await db.insert(charges).values(data);
   const created = await db.select().from(charges).where(eq(charges.name, data.name || '')).orderBy(desc(charges.createdAt)).limit(1);
   return created && created.length > 0 ? created[0] : null;

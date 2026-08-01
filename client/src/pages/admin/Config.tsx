@@ -52,6 +52,8 @@ export default function AdminConfig() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // EDG-03: guard anti doble-submit
+    if (updateConfig.isPending) return;
 
     try {
       // Si la estructura ya existe, pisos/aptos son inmutables: no se envían
@@ -158,8 +160,8 @@ export default function AdminConfig() {
               </p>
             )}
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-              Guardar Cambios
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={updateConfig.isPending}>
+              {updateConfig.isPending ? "Guardando..." : "Guardar Cambios"}
             </Button>
           </form>
         </CardContent>
@@ -206,8 +208,8 @@ export default function AdminConfig() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-              Guardar Cambios
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={updateConfig.isPending}>
+              {updateConfig.isPending ? "Guardando..." : "Guardar Cambios"}
             </Button>
           </form>
         </CardContent>
@@ -232,8 +234,8 @@ export default function AdminConfig() {
               />
             </div>
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-              Guardar Cambios
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={updateConfig.isPending}>
+              {updateConfig.isPending ? "Guardando..." : "Guardar Cambios"}
             </Button>
           </form>
         </CardContent>
@@ -263,8 +265,8 @@ export default function AdminConfig() {
               Los recordatorios se enviarán automáticamente el día {formData.reminderDay} de cada mes
             </p>
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-              Guardar Cambios
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={updateConfig.isPending}>
+              {updateConfig.isPending ? "Guardando..." : "Guardar Cambios"}
             </Button>
           </form>
         </CardContent>

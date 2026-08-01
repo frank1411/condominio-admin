@@ -76,6 +76,8 @@ export default function AdminCharges() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // EDG-03: guard anti doble-submit (el botón también se deshabilita)
+    if (createCharge.isPending || updateCharge.isPending) return;
     if (!formData.name || !formData.amount) {
       toast.error("Completa los campos requeridos");
       return;
@@ -293,8 +295,16 @@ export default function AdminCharges() {
               />
             </div>
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-              {editingId !== null ? "Guardar Cambios" : "Crear Cobro"}
+            <Button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700"
+              disabled={createCharge.isPending || updateCharge.isPending}
+            >
+              {createCharge.isPending || updateCharge.isPending
+                ? "Guardando..."
+                : editingId !== null
+                  ? "Guardar Cambios"
+                  : "Crear Cobro"}
             </Button>
           </form>
         </CardContent>

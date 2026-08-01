@@ -53,7 +53,9 @@ export default function UserPayments() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.amount) {
+    // EDG-03: guard anti doble-submit (el botón también se deshabilita)
+    if (submitPayment.isPending) return;
+    if (!formData.month || !formData.amount) {
       toast.error("Completa los campos requeridos");
       return;
     }
@@ -199,8 +201,12 @@ export default function UserPayments() {
               )}
             </div>
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-              Enviar Pago
+            <Button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700"
+              disabled={submitPayment.isPending}
+            >
+              {submitPayment.isPending ? "Enviando..." : "Enviar Pago"}
             </Button>
           </form>
         </CardContent>

@@ -655,15 +655,35 @@ async function toggleUserActive(userId, isActive) {
 }
 
 // server/db/charges.ts
-import { and as and2, desc as desc2, eq as eq3, inArray } from "drizzle-orm";
+import { and as and2, desc as desc2, eq as eq3, gt, inArray, isNull } from "drizzle-orm";
 async function getAllCharges() {
   const db = await getDb();
   if (!db) return [];
   return await db.select().from(charges).where(eq3(charges.isActive, true));
 }
+var RECENT_CHARGE_WINDOW_MS = 2 * 60 * 1e3;
 async function createCharge(data) {
   const db = await getDb();
   if (!db) return null;
+  const conditions = [
+    eq3(charges.isActive, true),
+    eq3(charges.name, data.name || ""),
+    eq3(charges.amount, String(data.amount || "")),
+    gt(charges.createdAt, new Date(Date.now() - RECENT_CHARGE_WINDOW_MS))
+  ];
+  if (data.apartmentId) {
+    conditions.push(eq3(charges.apartmentId, data.apartmentId));
+  } else {
+    conditions.push(isNull(charges.apartmentId));
+  }
+  const recent = await db.select({ id: charges.id }).from(charges).where(and2(...conditions)).limit(1);
+  if (recent.length > 0) {
+    const err = new Error(
+      "Este cobro ya fue creado hace un momento (mismo nombre, monto y alcance). \xBFDoble clic?"
+    );
+    err.status = 400;
+    throw err;
+  }
   await db.insert(charges).values(data);
   const created = await db.select().from(charges).where(eq3(charges.name, data.name || "")).orderBy(desc2(charges.createdAt)).limit(1);
   return created && created.length > 0 ? created[0] : null;
