@@ -16,8 +16,12 @@ import { toast } from "sonner";
 
 export default function AdminConfig() {
   const { data: config, isLoading, refetch } = trpc.config.get.useQuery();
+  const { data: floorsData } = trpc.floors.withApartments.useQuery();
   const updateConfig = trpc.config.update.useMutation();
   const initStructure = trpc.config.initializeStructure.useMutation();
+
+  // La estructura es inmutable una vez creada (BUG-002)
+  const structureExists = (floorsData?.length ?? 0) > 0;
 
   const [formData, setFormData] = useState({
     name: "",
@@ -43,6 +47,9 @@ export default function AdminConfig() {
     }
   }, [config]);
 
+  const getErrorMessage = (error: unknown) =>
+    error instanceof Error ? error.message : "Error al actualizar configuración";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -51,7 +58,7 @@ export default function AdminConfig() {
       toast.success("Configuración actualizada");
       refetch();
     } catch (error) {
-      toast.error("Error al actualizar configuración");
+      toast.error(getErrorMessage(error));
     }
   };
 
@@ -63,7 +70,7 @@ export default function AdminConfig() {
       toast.success("Estructura del condominio creada");
       refetch();
     } catch (error) {
-      toast.error("Error al crear estructura");
+      toast.error(getErrorMessage(error));
     }
   };
 
@@ -107,6 +114,7 @@ export default function AdminConfig() {
                   min="1"
                   max="20"
                   value={formData.floors}
+                  disabled={structureExists}
                   onChange={(e) =>
                     setFormData({ ...formData, floors: parseInt(e.target.value) })
                   }
@@ -119,6 +127,7 @@ export default function AdminConfig() {
                   min="1"
                   max="50"
                   value={formData.apartmentsPerFloor}
+                  disabled={structureExists}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -128,6 +137,13 @@ export default function AdminConfig() {
                 />
               </div>
             </div>
+            {structureExists && (
+              <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-md p-3">
+                ⚠️ La estructura del condominio ya fue creada y es inmutable. Los pisos y
+                apartamentos actuales no se pueden modificar desde aquí; para cambiarlos se
+                requiere intervención directa en la base de datos.
+              </p>
+            )}
 
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
               Guardar Cambios
@@ -241,24 +257,41 @@ export default function AdminConfig() {
         </CardContent>
       </Card>
 
-      {/* Inicializar Estructura */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Inicializar Estructura</CardTitle>
-          <CardDescription>Crea pisos y apartamentos según la configuración</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-600 mb-4">
-            Se crearán {formData.floors} pisos con {formData.apartmentsPerFloor} apartamentos cada uno.
-          </p>
-          <Button
-            onClick={handleInitStructure}
-            className="w-full bg-green-600 hover:bg-green-700"
-          >
-            Crear Estructura
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Inicializar Estructura — solo visible antes de crear la estructura */}
+      {!structureExists && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Inicializar Estructura</CardTitle>
+            <CardDescription>Crea pisos y apartamentos según la configuración</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">
+              Se crearán {formData.floors} pisos con {formData.apartmentsPerFloor} apartamentos cada uno.
+            </p>
+            <Button
+              onClick={handleInitStructure}
+              className="w-full bg-green-600 hover:bg-green-700"
+            >
+              Crear Estructura
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      {structureExists && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Estructura del Condominio</CardTitle>
+            <CardDescription>La estructura ya fue creada</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600">
+              Estructura actual: {floorsData?.length ?? 0} pisos configurados.
+              La estructura es inmutable una vez creada — los cambios de pisos y
+              apartamentos requieren intervención directa en la base de datos.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
