@@ -20,6 +20,7 @@
 | BUG-001 | Pagos/Cobros | Montos 0 y negativos aceptados en `payments.submit` y `charges.create` | CRÍTICA | 🔧 FIXEADO | `b736772` |
 | MEJORA-001 | Pagos/UX | Saldo no se refresca automáticamente tras aprobar pago (staleTime 5 min) | MEDIA | 🔧 FIXEADO | `8d648fe` |
 | BUG-002 | Config/Estructura | Cambiar pisos/aptos en config no afecta la estructura real: `initializeFloorsAndApartments` retorna temprano si ya existen pisos (`if (existingFloors.length > 0) return`) → el dashboard sigue mostrando la estructura vieja y parece "hardcodeada" | ALTA | 🔧 FIXEADO (decisión: estructura inmutable) | `3725299` — `updateCondominiumConfig` rechaza cambios de pisos/aptos si la estructura existe; UI bloquea los campos y oculta el botón destructivo |
+| MEJORA-002 | Config/Apartamentos | Vista previa de patrón no coincidía con la generación real (`{numero}` correlativo en preview vs compuesto en resultado); "Generar Todos" usaba el patrón guardado, no el escrito; sobrescribía nombres manuales sin confirmación | MEDIA | 🔧 FIXEADO | `60d0058` — preview replica `apartmentNumber` real; server auto-guarda el patrón enviado; `window.confirm` antes de sobrescribir |
 | PEND-BUG-001 | Pagos parciales | Bug reportado por usuario tras limpiar BD — pendiente de reproducir | ? | ⏳ PENDIENTE | — |
 
 ---
@@ -132,9 +133,9 @@
 | CFG-02 | Actualizar mensualidad base | Admin | Editar baseFee | 45 | Persistido; afecta nuevas deudas | ⏳ PENDIENTE | |
 | CFG-03 | Pisos fuera de rango | Admin | floors = 0 o 25 | 0 / 25 | Rechazado (min 1, max 20) | ⏳ PENDIENTE | |
 | CFG-04 | Apartamentos por piso fuera de rango | Admin | aptsPerFloor = 0 o 60 | 0 / 60 | Rechazado (min 1, max 50) | ⏳ PENDIENTE | |
-| CFG-05 | Inicializar estructura pisos/aptos | Admin | `initializeStructure` | — | Pisos + aptos creados según config | ⏳ PENDIENTE | |
-| CFG-06 | Generar nombres de apartamentos | Admin | `generateApartmentNames` | patrón | Nombres según patrón | ⏳ PENDIENTE | |
-| CFG-07 | Patrón de nombres inválido | Admin | getPatternExamples con patrón raro | `{piso}-{numero}` | Ejemplos generados sin crash | ⏳ PENDIENTE | |
+| CFG-05 | Inicializar estructura pisos/aptos | Admin | `initializeStructure` | — | Pisos + aptos creados según config | ✅ PASÓ | QA-03 (estructura 5×6 creada) |
+| CFG-06 | Generar nombres de apartamentos | Admin | `generateApartmentNames` | patrón | Nombres según patrón | ✅ PASÓ | MEJORA-002 (`60d0058`): preview = resultado, auto-guarda patrón |
+| CFG-07 | Patrón de nombres inválido | Admin | getPatternExamples con patrón raro | `{piso}-{numero}` | Ejemplos generados sin crash | ✅ PASÓ | MEJORA-002; detalle menor de patrones pendiente (decisión futura) |
 
 ## 7. USUARIOS (USR)
 
