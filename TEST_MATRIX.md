@@ -201,14 +201,14 @@
 
 | ID | Caso de prueba | Precondiciones | Pasos | Datos | Resultado esperado | Estado | Notas |
 |----|----------------|----------------|-------|-------|--------------------|--------|-------|
-| REP-01 | Exportar PDF | Admin, dashboard con datos | Botón "PDF" | mes actual | Descarga Estado-Pagos.pdf con resumen + tabla | ✅ PASÓ (código) | `generatePDF` (pdfkit) + blob download; toast de error real añadido f699fac |
-| REP-02 | Exportar Excel | Admin, dashboard con datos | Botón "Excel" | mes actual | Descarga Estado-Pagos.xlsx con resumen + tabla | ✅ PASÓ (código) | `generateExcel` (exceljs) + blob download; toast de error real añadido f699fac |
+| REP-01 | Exportar PDF | Admin, dashboard con datos | Botón "PDF" | mes actual | Descarga Estado-Pagos.pdf con resumen + tabla | ✅ RE-TEST (2026-08-01) | `generatePDF` (pdfkit) + blob download; toast de error real añadido f699fac — confirmado por el usuario |
+| REP-02 | Exportar Excel | Admin, dashboard con datos | Botón "Excel" | mes actual | Descarga Estado-Pagos.xlsx con resumen + tabla | ✅ RE-TEST (2026-08-01) | `generateExcel` (exceljs) + blob download; toast de error real añadido f699fac — confirmado por el usuario |
 | REP-03 | BD sin deudas | Sin deudas en el mes | Exportar PDF/Excel | mes vacío | Exporta con resumen en ceros, sin crash | ✅ PASÓ (código) | forEach sobre lista vacía no itera; resumen sale en 0 |
 | REP-04 | Encoding/acentos | Nombres con tildes/ñ | Exportar PDF/Excel | "Condominio..." | Acentos y ñ correctos en ambos formatos | ✅ PASÓ (código) | Helvetica (PDF) = WinAnsi latin-1; ExcelJS = UTF-8 nativo |
 | REP-05 | Mes sin datos | Mes sin cobros | Reports → mes | — | Mensaje claro, no pantalla blanca | ⏳ PENDIENTE | requiere prueba manual (router lanza NOT_FOUND) |
 | STO-01 | Subir comprobante | Residente con pago | Cargar imagen JPG válida | <5MB | Comprobante subido + vista previa | ✅ PASÓ (QA-03) | uploadVoucher + presigned URL S3 |
-| STO-02 | Archivo no permitido | Form de pago | Cargar .exe/.txt | — | Rechazado con mensaje claro | ✅ PASÓ (3 capas) | allowlist MIME (jpeg/png/webp/pdf): accept HTML + validación JS (Payments f699fac / VoucherUpload) + server (payments.ts:503) |
-| STO-03 | Archivo > 5MB | Form de pago | Cargar archivo 6MB | 6MB | Rechazado: "Archivo muy grande. Máximo 5MB" | ✅ PASÓ (3 capas) | validación JS + server (payments.ts:509) |
+| STO-02 | Archivo no permitido | Form de pago | Cargar .exe/.txt | — | Rechazado con mensaje claro | ✅ RE-TEST (2026-08-01) | allowlist MIME (jpeg/png/webp/pdf): accept HTML + validación JS (Payments f699fac / VoucherUpload) + server (payments.ts:503) — confirmado por el usuario |
+| STO-03 | Archivo > 5MB | Form de pago | Cargar archivo 6MB | 6MB | Rechazado: "Archivo muy grande. Máximo 5MB" | ✅ RE-TEST (2026-08-01) | validación JS + server (payments.ts:509) — confirmado por el usuario |
 | STO-04 | IDOR en vouchers | Residente A | Abrir voucher de pago de residente B (cambiar paymentId) | — | FORBIDDEN, no ve el comprobante | ✅ PASÓ (código) | `getVoucher`/`uploadVoucher` validan `payment.userId === ctx.user.id \|\| admin` → FORBIDDEN |
 
 ---
