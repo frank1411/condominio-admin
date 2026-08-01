@@ -72,7 +72,12 @@ export default function AdminCharges() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("¿Estás seguro de que deseas eliminar este cobro?")) return;
+    if (
+      !confirm(
+        "¿Eliminar este cobro? Se restará su monto de las deudas del mes. Si algún apartamento ya pagó, la eliminación se bloqueará."
+      )
+    )
+      return;
 
     try {
       await deleteCharge.mutateAsync({ id });
@@ -83,7 +88,12 @@ export default function AdminCharges() {
         utils.reports.invalidate(),
       ]);
     } catch (error) {
-      toast.error("Error al eliminar el cobro");
+      // BUG-003: mostrar el motivo real (bloqueo por deudas ya pagadas)
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Error al eliminar el cobro";
+      toast.error(message);
     }
   };
 

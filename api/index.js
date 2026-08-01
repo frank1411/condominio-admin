@@ -653,7 +653,7 @@ async function toggleUserActive(userId, isActive) {
 }
 
 // server/db/charges.ts
-import { desc as desc2, eq as eq3 } from "drizzle-orm";
+import { and as and2, desc as desc2, eq as eq3, inArray } from "drizzle-orm";
 async function getAllCharges() {
   const db = await getDb();
   if (!db) return [];
@@ -674,8 +674,50 @@ async function updateCharge(id, data) {
 async function deleteCharge(id) {
   const db = await getDb();
   if (!db) return null;
-  await db.delete(monthlyDebts).where(eq3(monthlyDebts.chargeId, id));
-  return await db.update(charges).set({ isActive: false }).where(eq3(charges.id, id));
+  return await db.transaction(async (tx) => {
+    const chargeResult = await tx.select().from(charges).where(eq3(charges.id, id)).limit(1);
+    if (!chargeResult || chargeResult.length === 0) return null;
+    const charge = chargeResult[0];
+    const created = charge.createdAt ? new Date(charge.createdAt) : /* @__PURE__ */ new Date();
+    const month = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}`;
+    const amount = parseFloat(charge.amount) || 0;
+    let affectedApartmentIds = [];
+    if (charge.apartmentId) {
+      affectedApartmentIds = [charge.apartmentId];
+    } else {
+      const all = await tx.select({ id: apartments.id }).from(apartments);
+      affectedApartmentIds = all.map((a) => a.id);
+    }
+    if (affectedApartmentIds.length > 0) {
+      const debts = await tx.select().from(monthlyDebts).where(and2(
+        eq3(monthlyDebts.month, month),
+        inArray(monthlyDebts.apartmentId, affectedApartmentIds)
+      ));
+      const paidDebts = debts.filter(
+        (d) => (parseFloat(d.totalPaid) || 0) > 0 || d.isPaid
+      );
+      if (paidDebts.length > 0) {
+        throw new Error(
+          `No se puede eliminar el cobro "${charge.name}": hay deudas ya pagadas en ${month}. Elimina los pagos asociados primero.`
+        );
+      }
+      for (const debt of debts) {
+        const due = parseFloat(debt.totalDue) || 0;
+        const pending = parseFloat(debt.pendingAmount) || 0;
+        const newDue = Math.max(0, due - amount);
+        const newPending = Math.max(0, pending - amount);
+        if (newDue <= 0 && newPending <= 0) {
+          await tx.delete(monthlyDebts).where(eq3(monthlyDebts.id, debt.id));
+        } else {
+          await tx.update(monthlyDebts).set({
+            totalDue: newDue.toFixed(2),
+            pendingAmount: newPending.toFixed(2)
+          }).where(eq3(monthlyDebts.id, debt.id));
+        }
+      }
+    }
+    return await tx.update(charges).set({ isActive: false }).where(eq3(charges.id, id));
+  });
 }
 
 // server/db/payments.ts
@@ -772,9 +814,9 @@ async function getPaymentById(id) {
 async function applyPaymentToDebts(apartmentId, paymentAmount, tx) {
   const db = tx ?? await getDb();
   if (!db) return null;
-  const { eq: drizzleEq, and: and6 } = await import("drizzle-orm");
+  const { eq: drizzleEq, and: and7 } = await import("drizzle-orm");
   try {
-    const pendingDebts = await db.select().from(monthlyDebts).where(and6(
+    const pendingDebts = await db.select().from(monthlyDebts).where(and7(
       drizzleEq(monthlyDebts.apartmentId, apartmentId),
       drizzleEq(monthlyDebts.isPaid, false)
     )).orderBy(monthlyDebts.month);
@@ -812,9 +854,9 @@ async function applyPaymentToDebts(apartmentId, paymentAmount, tx) {
 async function validatePaymentAmount(apartmentId, paymentAmount, tx) {
   const db = tx ?? await getDb();
   if (!db) return { valid: false, reason: "Base de datos no disponible" };
-  const { eq: drizzleEq, and: and6 } = await import("drizzle-orm");
+  const { eq: drizzleEq, and: and7 } = await import("drizzle-orm");
   try {
-    const pendingDebts = await db.select().from(monthlyDebts).where(and6(
+    const pendingDebts = await db.select().from(monthlyDebts).where(and7(
       drizzleEq(monthlyDebts.apartmentId, apartmentId),
       drizzleEq(monthlyDebts.isPaid, false)
     ));
@@ -989,7 +1031,7 @@ function getFileExtension(mimeType) {
 }
 
 // server/db/debts.ts
-import { and as and3, asc as asc2, eq as eq5, inArray } from "drizzle-orm";
+import { and as and4, asc as asc2, eq as eq5, inArray as inArray2 } from "drizzle-orm";
 var log5 = createLogger("debts");
 async function getDebtsByMonth(month) {
   const db = await getDb();
@@ -1046,7 +1088,7 @@ async function generateDebtsFromCharge(chargeId) {
     const chargeAmount = parseFloat(chargeData.amount);
     if (chargeData.apartmentId) {
       const existingDebt = await db.select().from(monthlyDebts).where(
-        and3(
+        and4(
           eq5(monthlyDebts.apartmentId, chargeData.apartmentId),
           eq5(monthlyDebts.month, month)
         )
@@ -1074,9 +1116,9 @@ async function generateDebtsFromCharge(chargeId) {
       if (allApartments.length === 0) return;
       const apartmentIds = allApartments.map((a) => a.id);
       const existingDebts = await db.select().from(monthlyDebts).where(
-        and3(
+        and4(
           eq5(monthlyDebts.month, month),
-          inArray(monthlyDebts.apartmentId, apartmentIds)
+          inArray2(monthlyDebts.apartmentId, apartmentIds)
         )
       );
       const debtMap = new Map(existingDebts.map((d) => [d.apartmentId, d]));
@@ -1188,7 +1230,7 @@ function computeDebtSummary(debts) {
 }
 
 // server/db/notifications.ts
-import { and as and4, desc as desc4 } from "drizzle-orm";
+import { and as and5, desc as desc4 } from "drizzle-orm";
 var log6 = createLogger("notifications");
 async function createNotification(data) {
   const db = await getDb();
@@ -1206,7 +1248,7 @@ async function getUnreadNotifications(userId) {
   const { eq: drizzleEq } = await import("drizzle-orm");
   try {
     return await db.select().from(notifications).where(
-      and4(
+      and5(
         drizzleEq(notifications.userId, userId),
         drizzleEq(notifications.isRead, false)
       )
@@ -1250,7 +1292,7 @@ async function markAllNotificationsAsRead(userId) {
       isRead: true,
       readAt: /* @__PURE__ */ new Date()
     }).where(
-      and4(
+      and5(
         drizzleEq(notifications.userId, userId),
         drizzleEq(notifications.isRead, false)
       )
@@ -1266,7 +1308,7 @@ async function countUnreadNotifications(userId) {
   const { eq: drizzleEq, sql: sql4 } = await import("drizzle-orm");
   try {
     const result = await db.select({ count: sql4`COUNT(*)` }).from(notifications).where(
-      and4(
+      and5(
         drizzleEq(notifications.userId, userId),
         drizzleEq(notifications.isRead, false)
       )
@@ -1326,7 +1368,7 @@ async function createAuditLog(data) {
 }
 
 // server/db/reports.ts
-import { and as and5, asc as asc3, desc as desc5, eq as eq8 } from "drizzle-orm";
+import { and as and6, asc as asc3, desc as desc5, eq as eq8 } from "drizzle-orm";
 var log7 = createLogger("reports");
 async function getMonthlyReportData(apartmentId, month) {
   const db = await getDb();
@@ -1335,13 +1377,13 @@ async function getMonthlyReportData(apartmentId, month) {
     const apartment = await db.select().from(apartments).where(eq8(apartments.id, apartmentId)).limit(1);
     if (!apartment[0]) return null;
     const monthPayments = await db.select().from(payments).where(
-      and5(
+      and6(
         eq8(payments.apartmentId, apartmentId),
         eq8(payments.month, month)
       )
     );
     const monthDebts = await db.select().from(monthlyDebts).where(
-      and5(
+      and6(
         eq8(monthlyDebts.apartmentId, apartmentId),
         eq8(monthlyDebts.month, month)
       )
@@ -1369,7 +1411,7 @@ async function getUserPaymentsSummary(userId, limit = 12) {
     }
     const userPayments = await db.select().from(payments).where(eq8(payments.apartmentId, user[0].apartmentId)).orderBy(desc5(payments.submittedAt)).limit(limit);
     const userDebts = await db.select().from(monthlyDebts).where(
-      and5(
+      and6(
         eq8(monthlyDebts.apartmentId, user[0].apartmentId),
         eq8(monthlyDebts.isPaid, false)
       )
@@ -1404,7 +1446,7 @@ async function getPaymentsByStatus(status, month) {
     let query = db.select().from(payments).where(eq8(payments.status, status));
     if (month) {
       query = db.select().from(payments).where(
-        and5(
+        and6(
           eq8(payments.status, status),
           eq8(payments.month, month)
         )
@@ -1777,8 +1819,16 @@ var appRouter = router({
       return { success: true };
     }),
     delete: adminProcedure2.input(z2.object({ id: z2.number() })).mutation(async ({ input }) => {
-      await deleteCharge(input.id);
-      return { success: true };
+      try {
+        await deleteCharge(input.id);
+        return { success: true };
+      } catch (error) {
+        if (error instanceof TRPCError3) throw error;
+        throw new TRPCError3({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "No se pudo eliminar el cobro"
+        });
+      }
     })
   }),
   // ===== GESTIÓN DE PAGOS =====

@@ -234,8 +234,17 @@ export const appRouter = router({
     delete: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        await db.deleteCharge(input.id);
-        return { success: true };
+        try {
+          await db.deleteCharge(input.id);
+          return { success: true };
+        } catch (error) {
+          // BUG-003: propagar el motivo real (bloqueo por deudas pagadas) al cliente
+          if (error instanceof TRPCError) throw error;
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: error instanceof Error ? error.message : "No se pudo eliminar el cobro",
+          });
+        }
       }),
   }),
 
