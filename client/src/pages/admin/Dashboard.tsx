@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2, DollarSign, Users, Download } from "lucide-react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { ManualPaymentModal } from "@/components/ManualPaymentModal";
 
 export default function AdminDashboard() {
@@ -49,6 +50,8 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error('Error descargando PDF:', error);
+      const message = error instanceof Error && error.message ? error.message : "Error al descargar el PDF";
+      toast.error(message);
     } finally {
       setDownloadingPDF(false);
     }
@@ -76,6 +79,8 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error('Error descargando Excel:', error);
+      const message = error instanceof Error && error.message ? error.message : "Error al descargar el Excel";
+      toast.error(message);
     } finally {
       setDownloadingExcel(false);
     }

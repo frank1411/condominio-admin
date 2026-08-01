@@ -40,15 +40,30 @@ export default function UserPayments() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setFormData({ ...formData, voucherImage: base64 });
-        setImagePreview(base64);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // STO-02/03: validación JS — tipo MIME permitido + tamaño ≤ 5MB
+    // (espejo de la validación server-side; el server sigue siendo la fuente de verdad)
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error(`Tipo de archivo no permitido: ${file.type || "desconocido"}. Usa JPG, PNG, WEBP o PDF.`);
+      e.target.value = "";
+      return;
     }
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast.error(`Archivo muy grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo: 5MB`);
+      e.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+      setFormData({ ...formData, voucherImage: base64 });
+      setImagePreview(base64);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -177,7 +192,7 @@ export default function UserPayments() {
               <div className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-gray-50">
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
                   onChange={handleImageChange}
                   className="hidden"
                   id="image-input"
