@@ -154,11 +154,15 @@ export function generatePatternExamples(pattern: string, floorsCount: number, ap
   for (let floorIdx = 0; floorIdx < floorsCount; floorIdx++) {
     // Mostrar primeros 3 apartamentos de cada piso
     for (let aptNum = 1; aptNum <= Math.min(3, apartmentsPerFloor); aptNum++) {
+      // IMPORTANTE: replicar el apartmentNumber REAL que genera
+      // initializeFloorsAndApartments (`${piso}${apto padded}` → "101", "206"...),
+      // para que la vista previa coincida exactamente con el resultado final.
+      const apartmentNumber = parseInt(`${floorIdx}${String(aptNum).padStart(2, "0")}`);
       const example = generateApartmentName(
         pattern,
         floorIdx,
         floorNames[floorIdx],
-        aptNum
+        apartmentNumber
       );
       examples.push(example);
     }
@@ -167,36 +171,40 @@ export function generatePatternExamples(pattern: string, floorsCount: number, ap
   return examples;
 }
 
-export async function generateAllApartmentNames() {
+export async function generateAllApartmentNames(patternOverride?: string) {
   const db = await getDb();
-  if (!db) return null;
+  if (!db) throw new Error("No hay conexión a la base de datos");
 
-  try {
-    const config = await getCondominiumConfig();
-    if (!config) return null;
+  const config = await getCondominiumConfig();
+  if (!config) throw new Error("No hay configuración del condominio");
 
-    const pattern = config.apartmentNamePattern || "Apt-{piso}-{numero}";
-    const allFloors = await getAllFloors();
-    const allApartments = await getAllApartments();
-
-    for (const apartment of allApartments) {
-      const floor = allFloors.find(f => f.id === apartment.floorId);
-      if (floor) {
-        const newName = generateApartmentName(
-          pattern,
-          floor.floorNumber,
-          floor.floorName,
-          parseInt(apartment.apartmentNumber)
-        );
-        await db.update(apartments).set({ unitName: newName }).where(eq(apartments.id, apartment.id));
-      }
-    }
-
-    return { success: true };
-  } catch (error) {
-    log.error({ err: error }, "Error generating apartment names:");
-    return null;
+  // Si viene un patrón explícito y difiere del guardado, se persiste primero:
+  // "Generar" usa SIEMPRE lo que el admin tiene escrito, aunque no haya
+  // pulsado "Guardar Patrón" antes (arreglo de consistencia preview/resultado).
+  if (patternOverride !== undefined && patternOverride !== config.apartmentNamePattern) {
+    await db.update(condominiumConfig)
+      .set({ apartmentNamePattern: patternOverride })
+      .where(eq(condominiumConfig.id, config.id));
   }
+
+  const pattern = patternOverride ?? config.apartmentNamePattern ?? "Apt-{piso}-{numero}";
+  const allFloors = await getAllFloors();
+  const allApartments = await getAllApartments();
+
+  for (const apartment of allApartments) {
+    const floor = allFloors.find(f => f.id === apartment.floorId);
+    if (floor) {
+      const newName = generateApartmentName(
+        pattern,
+        floor.floorNumber,
+        floor.floorName,
+        parseInt(apartment.apartmentNumber)
+      );
+      await db.update(apartments).set({ unitName: newName }).where(eq(apartments.id, apartment.id));
+    }
+  }
+
+  return { success: true, updated: allApartments.length };
 }
 
 export async function updateApartmentName(id: number, name: string) {

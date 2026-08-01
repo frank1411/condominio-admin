@@ -22,14 +22,17 @@ export default function AdminApartmentNames() {
   const generateNames = trpc.config.generateApartmentNames.useMutation();
   const updateName = trpc.apartments.updateName.useMutation();
   const updateConfig = trpc.config.update.useMutation();
-  const getExamples = trpc.config.getPatternExamples.useQuery(
-    { pattern: config?.apartmentNamePattern || "Apt-{piso}-{numero}" },
-    { enabled: !!config }
-  );
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("");
   const [patternInput, setPatternInput] = useState(config?.apartmentNamePattern || "Apt-{piso}-{numero}");
+
+  // Vista previa EN VIVO: depende de lo que se está escribiendo (patternInput),
+  // no del patrón guardado — así el usuario ve el resultado antes de guardar.
+  const getExamples = trpc.config.getPatternExamples.useQuery(
+    { pattern: patternInput },
+    { enabled: !!config }
+  );
 
   useEffect(() => {
     if (config?.apartmentNamePattern) {
@@ -37,13 +40,28 @@ export default function AdminApartmentNames() {
     }
   }, [config]);
 
+  const getErrorMessage = (error: unknown) =>
+    error instanceof Error ? error.message : "Ocurrió un error inesperado";
+
   const handleGenerateNames = async () => {
+    // Arreglo 3: confirmación antes de sobrescribir nombres (incluidos los
+    // editados manualmente en la lista de apartamentos).
+    if (apartments && apartments.length > 0) {
+      const manualCount = apartments.filter(a => a.unitName).length;
+      const confirmed = window.confirm(
+        `Esto generará los nombres de ${apartments.length} apartamento(s) usando el patrón actual y SOBRESCRIBIRÁ los nombres existentes (${manualCount} con nombre). ¿Continuar?`
+      );
+      if (!confirmed) return;
+    }
+
     try {
-      await generateNames.mutateAsync();
+      // Arreglo 2: se envía el patrón que el admin tiene ESCRITO (no el guardado),
+      // el server lo auto-guarda si difiere — Generar siempre coincide con la preview.
+      await generateNames.mutateAsync({ pattern: patternInput });
       toast.success("Nombres generados según el patrón");
       refetch();
     } catch (error) {
-      toast.error("Error al generar nombres");
+      toast.error(getErrorMessage(error));
     }
   };
 
@@ -52,7 +70,7 @@ export default function AdminApartmentNames() {
       await updateConfig.mutateAsync({ apartmentNamePattern: patternInput });
       toast.success("Patrón actualizado");
     } catch (error) {
-      toast.error("Error al actualizar patrón");
+      toast.error(getErrorMessage(error));
     }
   };
 
@@ -68,7 +86,7 @@ export default function AdminApartmentNames() {
       setEditingId(null);
       refetch();
     } catch (error) {
-      toast.error("Error al actualizar nombre");
+      toast.error(getErrorMessage(error));
     }
   };
 
@@ -135,8 +153,8 @@ export default function AdminApartmentNames() {
                 onChange={(e) => setPatternInput(e.target.value)}
                 placeholder="Ej: {piso_nombre}-{letra}"
               />
-              <Button onClick={handleUpdatePattern} className="bg-blue-600 hover:bg-blue-700">
-                Guardar Patrón
+              <Button onClick={handleUpdatePattern} className="bg-blue-600 hover:bg-blue-700" disabled={updateConfig.isPending}>
+                {updateConfig.isPending ? "Guardando..." : "Guardar Patrón"}
               </Button>
             </div>
           </div>
@@ -164,7 +182,7 @@ export default function AdminApartmentNames() {
               <li>• <code className="bg-white px-2 py-1 rounded">{'{'} piso_inteligente {'}'}</code> = PB para piso 0, números para otros (PB, 1, 2, 3, 4) - <strong>RECOMENDADO</strong></li>
               <li>• <code className="bg-white px-2 py-1 rounded">{'{'} piso {'}'}</code> = Número del piso (0 = Planta Baja, 1, 2, 3...)</li>
               <li>• <code className="bg-white px-2 py-1 rounded">{'{'} piso_nombre {'}'}</code> = Nombre del piso (Planta Baja, Piso 1, Piso 2...)</li>
-              <li>• <code className="bg-white px-2 py-1 rounded">{'{'} numero {'}'}</code> = Número correlativo (1, 2, 3, 4, 5, 6...)</li>
+              <li>• <code className="bg-white px-2 py-1 rounded">{'{'} numero {'}'}</code> = Número interno (piso 0: 1, 2, 3...; piso 1: 101, 102...)</li>
               <li>• <code className="bg-white px-2 py-1 rounded">{'{'} letra {'}'}</code> = Letra (A, B, C, D, E, F...)</li>
             </ul>
           </div>
@@ -206,6 +224,7 @@ export default function AdminApartmentNames() {
                           size="sm"
                           className="flex-1 bg-green-600 hover:bg-green-700"
                           onClick={() => handleSaveName(apartment.id)}
+                          disabled={updateName.isPending}
                         >
                           Guardar
                         </Button>
@@ -214,6 +233,7 @@ export default function AdminApartmentNames() {
                           variant="outline"
                           className="flex-1"
                           onClick={() => setEditingId(null)}
+                          disabled={updateName.isPending}
                         >
                           Cancelar
                         </Button>

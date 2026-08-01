@@ -531,43 +531,42 @@ function generatePatternExamples(pattern, floorsCount, apartmentsPerFloor) {
   const floorNames = ["Planta Baja", ...Array.from({ length: floorsCount - 1 }, (_, i) => `Piso ${i + 1}`)];
   for (let floorIdx = 0; floorIdx < floorsCount; floorIdx++) {
     for (let aptNum = 1; aptNum <= Math.min(3, apartmentsPerFloor); aptNum++) {
+      const apartmentNumber = parseInt(`${floorIdx}${String(aptNum).padStart(2, "0")}`);
       const example = generateApartmentName(
         pattern,
         floorIdx,
         floorNames[floorIdx],
-        aptNum
+        apartmentNumber
       );
       examples.push(example);
     }
   }
   return examples;
 }
-async function generateAllApartmentNames() {
+async function generateAllApartmentNames(patternOverride) {
   const db = await getDb();
-  if (!db) return null;
-  try {
-    const config = await getCondominiumConfig();
-    if (!config) return null;
-    const pattern = config.apartmentNamePattern || "Apt-{piso}-{numero}";
-    const allFloors = await getAllFloors();
-    const allApartments = await getAllApartments();
-    for (const apartment of allApartments) {
-      const floor = allFloors.find((f) => f.id === apartment.floorId);
-      if (floor) {
-        const newName = generateApartmentName(
-          pattern,
-          floor.floorNumber,
-          floor.floorName,
-          parseInt(apartment.apartmentNumber)
-        );
-        await db.update(apartments).set({ unitName: newName }).where(eq(apartments.id, apartment.id));
-      }
-    }
-    return { success: true };
-  } catch (error) {
-    log2.error({ err: error }, "Error generating apartment names:");
-    return null;
+  if (!db) throw new Error("No hay conexi\xF3n a la base de datos");
+  const config = await getCondominiumConfig();
+  if (!config) throw new Error("No hay configuraci\xF3n del condominio");
+  if (patternOverride !== void 0 && patternOverride !== config.apartmentNamePattern) {
+    await db.update(condominiumConfig).set({ apartmentNamePattern: patternOverride }).where(eq(condominiumConfig.id, config.id));
   }
+  const pattern = patternOverride ?? config.apartmentNamePattern ?? "Apt-{piso}-{numero}";
+  const allFloors = await getAllFloors();
+  const allApartments = await getAllApartments();
+  for (const apartment of allApartments) {
+    const floor = allFloors.find((f) => f.id === apartment.floorId);
+    if (floor) {
+      const newName = generateApartmentName(
+        pattern,
+        floor.floorNumber,
+        floor.floorName,
+        parseInt(apartment.apartmentNumber)
+      );
+      await db.update(apartments).set({ unitName: newName }).where(eq(apartments.id, apartment.id));
+    }
+  }
+  return { success: true, updated: allApartments.length };
 }
 async function updateApartmentName(id, name) {
   const db = await getDb();
@@ -1670,8 +1669,8 @@ var appRouter = router({
       await initializeFloorsAndApartments();
       return { success: true };
     }),
-    generateApartmentNames: adminProcedure2.mutation(async () => {
-      const result = await generateAllApartmentNames();
+    generateApartmentNames: adminProcedure2.input(z2.object({ pattern: z2.string().optional() })).mutation(async ({ input }) => {
+      const result = await generateAllApartmentNames(input.pattern);
       return result || { success: false };
     }),
     getPatternExamples: adminProcedure2.input(z2.object({ pattern: z2.string() })).query(async ({ input }) => {
@@ -1703,7 +1702,7 @@ var appRouter = router({
     }),
     updateName: adminProcedure2.input(z2.object({
       apartmentId: z2.number(),
-      name: z2.string()
+      name: z2.string().trim().min(1, "El nombre del apartamento no puede estar vac\xEDo").max(100)
     })).mutation(async ({ input, ctx }) => {
       await updateApartmentName(input.apartmentId, input.name);
       await createAuditLog({

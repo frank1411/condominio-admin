@@ -92,10 +92,12 @@ export const appRouter = router({
       return { success: true };
     }),
 
-    generateApartmentNames: adminProcedure.mutation(async () => {
-      const result = await db.generateAllApartmentNames();
-      return result || { success: false };
-    }),
+    generateApartmentNames: adminProcedure
+      .input(z.object({ pattern: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const result = await db.generateAllApartmentNames(input.pattern);
+        return result || { success: false };
+      }),
 
     getPatternExamples: adminProcedure
       .input(z.object({ pattern: z.string() }))
@@ -137,7 +139,7 @@ export const appRouter = router({
     updateName: adminProcedure
       .input(z.object({
         apartmentId: z.number(),
-        name: z.string(),
+        name: z.string().trim().min(1, "El nombre del apartamento no puede estar vacío").max(100),
       }))
       .mutation(async ({ input, ctx }) => {
         await db.updateApartmentName(input.apartmentId, input.name);
