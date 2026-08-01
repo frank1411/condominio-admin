@@ -17,7 +17,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 export default function AdminCharges() {
-  const { data: charges, isLoading, refetch } = trpc.charges.list.useQuery();
+  const utils = trpc.useUtils();
+  const { data: charges, isLoading } = trpc.charges.list.useQuery();
   const { data: apartments } = trpc.apartments.list.useQuery();
   const createCharge = trpc.charges.create.useMutation();
   const deleteCharge = trpc.charges.delete.useMutation();
@@ -55,7 +56,12 @@ export default function AdminCharges() {
         isIndividual: false,
         apartmentId: undefined,
       });
-      refetch();
+      // Crear un cobro genera deudas nuevas: invalidar todo lo derivado
+      await Promise.all([
+        utils.charges.invalidate(),
+        utils.debts.invalidate(),
+        utils.reports.invalidate(),
+      ]);
     } catch (error) {
       const message =
         error instanceof Error && error.message
@@ -71,7 +77,11 @@ export default function AdminCharges() {
     try {
       await deleteCharge.mutateAsync({ id });
       toast.success("Cobro eliminado");
-      refetch();
+      await Promise.all([
+        utils.charges.invalidate(),
+        utils.debts.invalidate(),
+        utils.reports.invalidate(),
+      ]);
     } catch (error) {
       toast.error("Error al eliminar el cobro");
     }

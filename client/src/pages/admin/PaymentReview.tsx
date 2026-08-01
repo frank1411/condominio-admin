@@ -24,12 +24,26 @@ interface PaymentRow {
 }
 
 export default function AdminPaymentReview() {
-  const { data: payments, isLoading, refetch } = trpc.payments.pending.useQuery();
+  const utils = trpc.useUtils();
+  const { data: payments, isLoading } = trpc.payments.pending.useQuery();
   const approvePayment = trpc.payments.approve.useMutation();
   const rejectPayment = trpc.payments.reject.useMutation();
   const [selectedPayment, setSelectedPayment] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+
+  // Tras aprobar/rechazar un pago, los datos derivados cambian:
+  // saldos (debts.dashboard/myDebts), reportes, notificaciones y el propio historial.
+  // Con staleTime de 5 min en el QueryClient, sin invalidar estas queries el
+  // dashboard seguiría mostrando saldos viejos hasta un refresh manual.
+  const refreshAffectedData = async () => {
+    await Promise.all([
+      utils.debts.invalidate(),
+      utils.payments.invalidate(),
+      utils.reports.invalidate(),
+      utils.notifications.invalidate(),
+    ]);
+  };
 
   const handleApprove = async (id: number) => {
     try {
@@ -37,7 +51,7 @@ export default function AdminPaymentReview() {
       toast.success("Pago aprobado exitosamente");
       setNotes("");
       setSelectedPayment(null);
-      refetch();
+      await refreshAffectedData();
     } catch (error: any) {
       toast.error(error?.message || "Error al aprobar pago");
     }
@@ -54,7 +68,7 @@ export default function AdminPaymentReview() {
       toast.success("Pago rechazado");
       setNotes("");
       setSelectedPayment(null);
-      refetch();
+      await refreshAffectedData();
     } catch (error) {
       toast.error("Error al rechazar pago");
     }

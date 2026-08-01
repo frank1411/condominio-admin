@@ -8,14 +8,24 @@ import { Loader2 } from "lucide-react";
 import { ManualPaymentModal } from "@/components/ManualPaymentModal";
 
 export default function AdminDashboard() {
+  const utils = trpc.useUtils();
   const [paymentModal, setPaymentModal] = useState<{ open: boolean; apartmentId?: number; apartmentName?: string; pendingDebt?: number }>({ open: false });
   const [sortBy, setSortBy] = useState<'floor' | 'debtDesc' | 'debtAsc'>('floor');
   const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
-  const { data: dashboard, isLoading, refetch } = trpc.debts.dashboard.useQuery();
+  const { data: dashboard, isLoading } = trpc.debts.dashboard.useQuery();
   const { data: config } = trpc.config.get.useQuery();
   const downloadPDF = trpc.reports.downloadPDF.useQuery({ month: dashboard?.currentMonth }, { enabled: false });
   const downloadExcel = trpc.reports.downloadExcel.useQuery({ month: dashboard?.currentMonth }, { enabled: false });
+
+  const handlePaymentRecorded = async () => {
+    await Promise.all([
+      utils.debts.invalidate(),
+      utils.payments.invalidate(),
+      utils.reports.invalidate(),
+      utils.notifications.invalidate(),
+    ]);
+  };
 
   const handleDownloadPDF = async () => {
     setDownloadingPDF(true);
@@ -272,7 +282,7 @@ export default function AdminDashboard() {
           apartmentId={paymentModal.apartmentId}
           apartmentName={paymentModal.apartmentName || ""}
           pendingDebt={paymentModal.pendingDebt || 0}
-          onPaymentRecorded={() => refetch()}
+          onPaymentRecorded={() => handlePaymentRecorded()}
         />
       )}
     </div>
