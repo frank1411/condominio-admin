@@ -195,7 +195,21 @@
 | EDG-05 | Responsive móvil | — | Ver 375px | — | Navegación y tablas usables | ⏳ PENDIENTE | |
 | EDG-06 | Fechas inválidas en mes | — | Mes malformado `2026-13` | 2026-13 | Validación (input type=month lo limita) | ✅ PASÓ (código) | `type="month"` en Payments + ManualPaymentModal — el navegador impide meses inválidos |
 | EDG-07 | Estado de carga visible | — | Navegar a páginas | — | Spinners/loaders en todas las cargas | ✅ PASÓ (código) | Todas las páginas tienen `Loader2`/`isLoading` |
-| EDG-08 | Error de servidor visible | Mutación falla | Forzar error | — | Toast con mensaje real (no genérico) | ✅ PASÓ | Toasts con error real aplicados en PAG/COB/CFG (`getErrorMessage`)|
+| EDG-08 | Error de servidor visible | Mutación falla | Forzar error | — | Toast con mensaje real (no genérico) | ✅ PASÓ | Toasts con error real aplicados en PAG/COB/CFG (`getErrorMessage` + PDF/Excel f699fac) |
+
+### QA-05: Reportes (REP) y Storage (STO)
+
+| ID | Caso de prueba | Precondiciones | Pasos | Datos | Resultado esperado | Estado | Notas |
+|----|----------------|----------------|-------|-------|--------------------|--------|-------|
+| REP-01 | Exportar PDF | Admin, dashboard con datos | Botón "PDF" | mes actual | Descarga Estado-Pagos.pdf con resumen + tabla | ✅ PASÓ (código) | `generatePDF` (pdfkit) + blob download; toast de error real añadido f699fac |
+| REP-02 | Exportar Excel | Admin, dashboard con datos | Botón "Excel" | mes actual | Descarga Estado-Pagos.xlsx con resumen + tabla | ✅ PASÓ (código) | `generateExcel` (exceljs) + blob download; toast de error real añadido f699fac |
+| REP-03 | BD sin deudas | Sin deudas en el mes | Exportar PDF/Excel | mes vacío | Exporta con resumen en ceros, sin crash | ✅ PASÓ (código) | forEach sobre lista vacía no itera; resumen sale en 0 |
+| REP-04 | Encoding/acentos | Nombres con tildes/ñ | Exportar PDF/Excel | "Condominio..." | Acentos y ñ correctos en ambos formatos | ✅ PASÓ (código) | Helvetica (PDF) = WinAnsi latin-1; ExcelJS = UTF-8 nativo |
+| REP-05 | Mes sin datos | Mes sin cobros | Reports → mes | — | Mensaje claro, no pantalla blanca | ⏳ PENDIENTE | requiere prueba manual (router lanza NOT_FOUND) |
+| STO-01 | Subir comprobante | Residente con pago | Cargar imagen JPG válida | <5MB | Comprobante subido + vista previa | ✅ PASÓ (QA-03) | uploadVoucher + presigned URL S3 |
+| STO-02 | Archivo no permitido | Form de pago | Cargar .exe/.txt | — | Rechazado con mensaje claro | ✅ PASÓ (3 capas) | allowlist MIME (jpeg/png/webp/pdf): accept HTML + validación JS (Payments f699fac / VoucherUpload) + server (payments.ts:503) |
+| STO-03 | Archivo > 5MB | Form de pago | Cargar archivo 6MB | 6MB | Rechazado: "Archivo muy grande. Máximo 5MB" | ✅ PASÓ (3 capas) | validación JS + server (payments.ts:509) |
+| STO-04 | IDOR en vouchers | Residente A | Abrir voucher de pago de residente B (cambiar paymentId) | — | FORBIDDEN, no ve el comprobante | ✅ PASÓ (código) | `getVoucher`/`uploadVoucher` validan `payment.userId === ctx.user.id \|\| admin` → FORBIDDEN |
 
 ---
 
