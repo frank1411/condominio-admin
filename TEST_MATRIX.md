@@ -211,6 +211,14 @@
 | STO-03 | Archivo > 5MB | Form de pago | Cargar archivo 6MB | 6MB | Rechazado: "Archivo muy grande. Máximo 5MB" | ✅ RE-TEST (2026-08-01) | validación JS + server (payments.ts:509) — confirmado por el usuario |
 | STO-04 | IDOR en vouchers | Residente A | Abrir voucher de pago de residente B (cambiar paymentId) | — | FORBIDDEN, no ve el comprobante | ✅ PASÓ (código) | `getVoucher`/`uploadVoucher` validan `payment.userId === ctx.user.id \|\| admin` → FORBIDDEN |
 
+### QA-SEC: Seguridad (RLS)
+
+| ID | Caso de prueba | Precondiciones | Pasos | Datos | Resultado esperado | Estado | Notas |
+|----|----------------|----------------|-------|-------|--------------------|--------|-------|
+| SEC-01 | RLS activada en las 10 tablas | — | `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` (10 tablas) | — | anon/authenticated: deny-by-default | ✅ APLICADO (2026-08-01) | 10/10 tablas `rowsecurity=true`; **cero políticas** → SELECT=0 filas, INSERT=42501, PATCH/DELETE=0 filas (verificado con anon key real) |
+| SEC-02 | Server no afectado | — | Login + operaciones normales | — | App funciona igual | ✅ VERIFICADO | Server usa `DATABASE_URL` directa (rol postgres/owner ignora RLS); prod HTTP 200; pago id=1 intacto ($5.00 approved) |
+| SEC-03 | Service role intacto | — | Storage (comprobantes) | — | Presigned URLs siguen funcionando | ✅ (por diseño) | `supabaseAdmin` (service_role) bypassa RLS; el cliente solo usa supabase-js para auth (login) — sin `.from()` a tablas |
+
 ---
 
 ## Cómo agregar casos
