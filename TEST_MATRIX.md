@@ -189,13 +189,13 @@
 | ID | Caso de prueba | Precondiciones | Pasos | Datos | Resultado esperado | Estado | Notas |
 |----|----------------|----------------|-------|-------|--------------------|--------|-------|
 | EDG-01 | Formularios con inputs vacíos | — | Enviar sin datos | — | Mensaje "completa campos requeridos" | ✅ PASÓ | QA-03 |
-| EDG-02 | Caracteres especiales en nombre cobro | Admin | Nombre `Agua & <b>Mantenimiento</b>` | — | Sin XSS (escape), sin crash | ⏳ PENDIENTE | |
-| EDG-03 | Doble submit crear cobro | Admin | Clic 2× "Crear cobro" | — | Sin cobros duplicados | ⏳ PENDIENTE | |
-| EDG-04 | Red offline | Sesión iniciada | DevTools → offline → recargar | — | Mensaje de error claro, no pantalla blanca | ⏳ PENDIENTE | |
+| EDG-02 | Caracteres especiales en nombre cobro | Admin | Nombre `Agua & <b>Mantenimiento</b>` | — | Sin XSS (escape), sin crash | ✅ PASÓ (código) | React escapa por defecto; único `dangerouslySetInnerHTML` es chart.tsx (recharts, contenido controlado) |
+| EDG-03 | Doble submit crear cobro | Admin | Clic 2× "Crear cobro" | — | Sin cobros duplicados | 🔧 FIXEADO | MEJORA-007 (3dffdd4): botón `disabled` + guard `isPending` en Charges/Payments/Config + chequeo server-side de duplicado reciente (2 min) en `createCharge` → RE-TEST |
+| EDG-04 | Red offline | Sesión iniciada | DevTools → offline → recargar | — | Mensaje de error claro, no pantalla blanca | ⏳ PENDIENTE | requiere prueba manual del usuario |
 | EDG-05 | Responsive móvil | — | Ver 375px | — | Navegación y tablas usables | ⏳ PENDIENTE | |
-| EDG-06 | Fechas inválidas en mes | — | Mes malformado `2026-13` | 2026-13 | Validación (input type=month lo limita) | ⏳ PENDIENTE | |
-| EDG-07 | Estado de carga visible | — | Navegar a páginas | — | Spinners/loaders en todas las cargas | ⏳ PENDIENTE | |
-| EDG-08 | Error de servidor visible | Mutación falla | Forzar error | — | Toast con mensaje real (no genérico) | ⏳ PENDIENTE | Mejora aplicada en PAG/COB |
+| EDG-06 | Fechas inválidas en mes | — | Mes malformado `2026-13` | 2026-13 | Validación (input type=month lo limita) | ✅ PASÓ (código) | `type="month"` en Payments + ManualPaymentModal — el navegador impide meses inválidos |
+| EDG-07 | Estado de carga visible | — | Navegar a páginas | — | Spinners/loaders en todas las cargas | ✅ PASÓ (código) | Todas las páginas tienen `Loader2`/`isLoading` |
+| EDG-08 | Error de servidor visible | Mutación falla | Forzar error | — | Toast con mensaje real (no genérico) | ✅ PASÓ | Toasts con error real aplicados en PAG/COB/CFG (`getErrorMessage`)|
 
 ---
 
