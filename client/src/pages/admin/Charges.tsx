@@ -74,7 +74,7 @@ export default function AdminCharges() {
   const handleDelete = async (id: number) => {
     if (
       !confirm(
-        "¿Eliminar este cobro? Se restará su monto de las deudas del mes. Si algún apartamento ya pagó, la eliminación se bloqueará."
+        "¿Eliminar este cobro? Se restará su monto de las deudas del mes. Si algún apartamento ya pagó, la diferencia quedará como saldo a favor del residente."
       )
     )
       return;

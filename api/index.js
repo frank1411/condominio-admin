@@ -695,25 +695,31 @@ async function deleteCharge(id) {
         eq3(monthlyDebts.month, month),
         inArray(monthlyDebts.apartmentId, affectedApartmentIds)
       ));
-      const paidDebts = debts.filter(
-        (d) => (parseFloat(d.totalPaid) || 0) > 0 || d.isPaid
-      );
-      if (paidDebts.length > 0) {
-        throw new Error(
-          `No se puede eliminar el cobro "${charge.name}": hay deudas ya pagadas en ${month}. Elimina los pagos asociados primero.`
-        );
-      }
       for (const debt of debts) {
         const due = parseFloat(debt.totalDue) || 0;
+        const paid = parseFloat(debt.totalPaid) || 0;
         const pending = parseFloat(debt.pendingAmount) || 0;
         const newDue = Math.max(0, due - amount);
-        const newPending = Math.max(0, pending - amount);
-        if (newDue <= 0 && newPending <= 0) {
+        let excessToCredit = 0;
+        let adjustedPaid = paid;
+        if (paid > newDue) {
+          excessToCredit = paid - newDue;
+          adjustedPaid = newDue;
+        }
+        const newPending = Math.max(0, newDue - adjustedPaid);
+        if (excessToCredit > 5e-3) {
+          const apt = await tx.select({ creditBalance: apartments.creditBalance }).from(apartments).where(eq3(apartments.id, debt.apartmentId)).limit(1);
+          const currentCredit = apt.length > 0 ? parseFloat(apt[0].creditBalance) || 0 : 0;
+          await tx.update(apartments).set({ creditBalance: (currentCredit + excessToCredit).toFixed(2) }).where(eq3(apartments.id, debt.apartmentId));
+        }
+        if (newDue <= 0 && newPending <= 0 && adjustedPaid <= 5e-3) {
           await tx.delete(monthlyDebts).where(eq3(monthlyDebts.id, debt.id));
         } else {
           await tx.update(monthlyDebts).set({
             totalDue: newDue.toFixed(2),
-            pendingAmount: newPending.toFixed(2)
+            totalPaid: adjustedPaid.toFixed(2),
+            pendingAmount: newPending.toFixed(2),
+            isPaid: newPending <= 5e-3
           }).where(eq3(monthlyDebts.id, debt.id));
         }
       }

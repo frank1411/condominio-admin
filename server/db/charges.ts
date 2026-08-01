@@ -30,12 +30,13 @@ export async function updateCharge(id: number, data: Partial<typeof charges.$inf
  * chargeId queda apuntando al primer cobro), ese DELETE no encontraba filas y
  * el monto del cobro eliminado quedaba "fantasma" en la deuda.
  *
- * Ahora:
+ * Ahora (regla de negocio 3 — "cualquier cobro se elimina, pagado o no"):
  * 1. Calcula el mes de las deudas que generó este cobro (mes de su creación).
  * 2. Resta el monto del cobro de cada deuda afectada (apto individual o todos).
  *    Si la deuda queda en 0, se elimina; si no, se ajusta totalDue/pendingAmount.
- * 3. BLOQUEA la eliminación si alguna deuda afectada ya tiene pagos aplicados
- *    (totalPaid > 0 o isPaid), para no dejar pagos huérfanos.
+ * 3. SIN BLOQUEO por pagos: si el apto ya pagó más de lo que ahora debe tras la
+ *    reversa (totalPaid > nuevo totalDue), el excedente se convierte en saldo a
+ *    favor (creditBalance) del apartamento — ningún pago queda huérfano.
  * Todo dentro de una transacción (defensa en profundidad).
  */
 export async function deleteCharge(id: number) {
@@ -72,31 +73,46 @@ export async function deleteCharge(id: number) {
           inArray(monthlyDebts.apartmentId, affectedApartmentIds)
         ));
 
-      // BLOQUEO: si alguna deuda afectada ya tiene pagos aplicados
-      const paidDebts = debts.filter(d =>
-        (parseFloat(d.totalPaid as unknown as string) || 0) > 0 || d.isPaid
-      );
-      if (paidDebts.length > 0) {
-        throw new Error(
-          `No se puede eliminar el cobro "${charge.name}": hay deudas ya pagadas en ${month}. Elimina los pagos asociados primero.`
-        );
-      }
-
-      // Reversa: restar el monto del cobro de cada deuda afectada
+      // Reversa: restar el monto del cobro de cada deuda afectada.
+      // Regla de negocio 3: SIN bloqueo por pagos — si el apto ya pagó más de lo
+      // que ahora debe, el excedente se convierte en saldo a favor (crédito).
       for (const debt of debts) {
         const due = parseFloat(debt.totalDue as unknown as string) || 0;
+        const paid = parseFloat(debt.totalPaid as unknown as string) || 0;
         const pending = parseFloat(debt.pendingAmount as unknown as string) || 0;
         const newDue = Math.max(0, due - amount);
-        const newPending = Math.max(0, pending - amount);
 
-        if (newDue <= 0 && newPending <= 0) {
-          // La deuda solo contenía este cobro: eliminarla
+        // Excedente pagado sobre la nueva deuda → creditBalance del apto
+        let excessToCredit = 0;
+        let adjustedPaid = paid;
+        if (paid > newDue) {
+          excessToCredit = paid - newDue;
+          adjustedPaid = newDue;
+        }
+        const newPending = Math.max(0, newDue - adjustedPaid);
+
+        if (excessToCredit > 0.005) {
+          const apt = await tx
+            .select({ creditBalance: apartments.creditBalance })
+            .from(apartments)
+            .where(eq(apartments.id, debt.apartmentId))
+            .limit(1);
+          const currentCredit = apt.length > 0 ? (parseFloat(apt[0].creditBalance as unknown as string) || 0) : 0;
+          await tx.update(apartments)
+            .set({ creditBalance: (currentCredit + excessToCredit).toFixed(2) })
+            .where(eq(apartments.id, debt.apartmentId));
+        }
+
+        if (newDue <= 0 && newPending <= 0 && adjustedPaid <= 0.005) {
+          // La deuda solo contenía este cobro y no había pagos: eliminarla
           await tx.delete(monthlyDebts).where(eq(monthlyDebts.id, debt.id));
         } else {
           await tx.update(monthlyDebts)
             .set({
               totalDue: newDue.toFixed(2),
+              totalPaid: adjustedPaid.toFixed(2),
               pendingAmount: newPending.toFixed(2),
+              isPaid: newPending <= 0.005,
             })
             .where(eq(monthlyDebts.id, debt.id));
         }
