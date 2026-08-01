@@ -19,7 +19,7 @@
 |--------|--------|-------------|-----------|--------|--------------|
 | BUG-001 | Pagos/Cobros | Montos 0 y negativos aceptados en `payments.submit` y `charges.create` | CRÍTICA | 🔧 FIXEADO | `b736772` |
 | MEJORA-001 | Pagos/UX | Saldo no se refresca automáticamente tras aprobar pago (staleTime 5 min) | MEDIA | 🔧 FIXEADO | `8d648fe` |
-| BUG-002 | Config/Estructura | Cambiar pisos/aptos en config no afecta la estructura real: `initializeFloorsAndApartments` retorna temprano si ya existen pisos (`if (existingFloors.length > 0) return`) → el dashboard sigue mostrando la estructura vieja y parece "hardcodeada" | ALTA | ⏳ PENDIENTE de fix | Evidencia: `condominium.ts:50-51`, `debts.ts:290` |
+| BUG-002 | Config/Estructura | Cambiar pisos/aptos en config no afecta la estructura real: `initializeFloorsAndApartments` retorna temprano si ya existen pisos (`if (existingFloors.length > 0) return`) → el dashboard sigue mostrando la estructura vieja y parece "hardcodeada" | ALTA | 🔧 FIXEADO (decisión: estructura inmutable) | `3725299` — `updateCondominiumConfig` rechaza cambios de pisos/aptos si la estructura existe; UI bloquea los campos y oculta el botón destructivo |
 | PEND-BUG-001 | Pagos parciales | Bug reportado por usuario tras limpiar BD — pendiente de reproducir | ? | ⏳ PENDIENTE | — |
 
 ---
