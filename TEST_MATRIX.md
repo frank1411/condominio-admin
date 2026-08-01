@@ -23,8 +23,10 @@
 | MEJORA-002 | Config/Apartamentos | Vista previa de patrón no coincidía con la generación real (`{numero}` correlativo en preview vs compuesto en resultado); "Generar Todos" usaba el patrón guardado, no el escrito; sobrescribía nombres manuales sin confirmación | MEDIA | 🔧 FIXEADO | `60d0058` — preview replica `apartmentNumber` real; server auto-guarda el patrón enviado; `window.confirm` antes de sobrescribir |
 | PEND-BUG-001 | Pagos parciales | Bug reportado por usuario tras limpiar BD — pendiente de reproducir | ? | ⏳ PENDIENTE | — |
 | BUG-003 | Deudas/Cobros | Eliminar un cobro no revierte sus deudas consolidadas: `deleteCharge` hacía `DELETE FROM monthlyDebts WHERE chargeId = id`, pero cuando un cobro nuevo se suma a una deuda existente del mes conserva el `chargeId` original → el DELETE no encuentra filas y el monto queda "fantasma" (verificado: apto 3 quedó con $49.02 = 30+15+4.02 tras eliminar cobro de $15). Además borraba deudas ya pagadas si el cobro era el primero del mes. El fix original agregó un bloqueo de eliminación si `totalPaid > 0`, que contradecía la regla de negocio 3 ("cualquier cobro se elimina, pagado o no") — eliminado | ALTA | ✅ FIXEADO + RE-TEST ✅ | `e54306e` — `deleteCharge` reescrito: reversa consolidada en transacción (resta el monto del cobro de las deudas del mes, elimina si llega a 0). `1aeff3d`: bloqueo por pagos ELIMINADO (contradecía regla 3) — ahora si `totalPaid > nuevo totalDue`, el excedente se convierte en `creditBalance` del apto (saldo a favor), ningún pago queda huérfano; UI actualizada. RE-TEST usuario (2026-08-01): ✅ "esta perfecto" |
-| MEJORA-003 | Pagos/Saldo a favor | Un pago que excede la deuda pendiente era rechazado en la aprobación ("el monto excede la deuda pendiente"), imposibilitando escenarios legítimos: cobro eliminado con pago pendiente aprobado después, o prepago. El excedente se perdía | MEDIA | 🔧 FIXEADO | este commit — `apartments.creditBalance` (saldo a favor real): excedente va a crédito en `applyPaymentToDebts`; `validatePaymentAmount` ya no rechaza excedentes; crédito se aplica automáticamente a deudas futuras en `generateDebtsFromCharge`; visible en dashboards (residente + admin) y mensaje de aprobación indica "X aplicados + Y como saldo a favor" |
+| MEJORA-003 | Pagos/Saldo a favor | Un pago que excede la deuda pendiente era rechazado en la aprobación ("el monto excede la deuda pendiente"), imposibilitando escenarios legítimos: cobro eliminado con pago pendiente aprobado después, o prepago. El excedente se perdía | MEDIA | 🔧 FIXEADO + RE-TEST ✅ (2026-08-01) | `f6e8281` — `apartments.creditBalance` (saldo a favor real): excedente va a crédito en `applyPaymentToDebts`; `validatePaymentAmount` ya no rechaza excedentes; crédito se aplica automáticamente a deudas futuras en `generateDebtsFromCharge`; visible en dashboards (residente + admin) y mensaje de aprobación indica "X aplicados + Y como saldo a favor". Confirmado por usuario junto con BUG-003 re-test |
 | MEJORA-005 | Recordatorios (QA-04) | La UI promete "Los recordatorios se enviarán automáticamente el día {reminderDay} de cada mes" (Config + dashboards), pero `reminderDay` solo se guarda/muestra: NO existe cron, scheduled function, worker ni lógica que dispare nada. El flujo real es 100% manual (admin crea → consulta pending → marca sent) | MEDIA | ⏳ PENDIENTE (decisión usuario 2026-08-01: dejarlo como está, solo registrarlo) | Hallazgo de QA-04: feature prometida no implementada. `reminderDay` default 5; sin uso en código server (`reminders` router: create/pending/markSent manuales; `reminders.ts` sin lógica de fecha). Si se quiere automatizar: cron Vercel + generación para deudores + notificación in-app |
+| MEJORA-006 | Cobros (QA-04) | Feature request del usuario: agregar info valiosa a los cobros — indicar si son globales o individuales y, si individual, a qué apartamento corresponden | BAJA (UX info) | ✅ IMPLEMENTADA + RE-TEST ✅ (2026-08-01) | `5193d1b` — badge gris "Global" / azul "Individual · {apto}" en la lista; alcance actual read-only en modo edición; resuelto client-side con `apartments.list` (sin cambio de API). Confirmado por usuario |
+| MEJORA-004 | Pagos (QA-04) | El submit de pago no validaba el tope de la deuda pendiente (solo monto > 0): un residente podía pagar más de lo que debía, rompiendo el modelo "los cobros no son facturas, pagos parciales" | MEDIA | 🔧 FIXEADO + RE-TEST ✅ (2026-08-01) | `52cba92` — validación en submit (3 capas): `max` HTML + toast JS con el error real del server + server `getApartmentPendingDebt` como fuente de verdad. PAG-09 → PASADO; PAG-12 re-definido (múltiples pagos parciales permitidos). Confirmado por usuario |
 
 ---
 
@@ -66,10 +68,10 @@
 | PAG-06 | Monto no numérico | — | Enviar `abc` | abc | Bloqueado (input type=number) | ✅ PASÓ | QA-03 |
 | PAG-07 | Pago parcial (menor a deuda) | Deuda $50, pago $30 | Crear + aprobar | 30 | Deuda pendiente $20, `isPaid=false` | ❌ FALLÓ? | ⏳ PENDIENTE de reproducir |
 | PAG-08 | Pago exacto de la deuda | Deuda $50, pago $50 | Crear + aprobar | 50 | Deuda liquidada `isPaid=true` | ✅ PASÓ | QA-03 |
-| PAG-09 | Pago mayor a deuda | Deuda $50, pago $80 | Crear + aprobar | 80 | Bloqueado (excede pendiente) | 🔧 FIXEADO | MEJORA-004: validación en submit (3 capas) → RE-TEST |
+| PAG-09 | Pago mayor a deuda | Deuda $50, pago $80 | Crear + aprobar | 80 | Bloqueado (excede pendiente) | ✅ PASADO + RE-TEST ✅ | MEJORA-004 (52cba92): validación en submit (3 capas) — toast con el error real del server. Confirmado por usuario |
 | PAG-10 | Pago en mes futuro | Mes actual 2026-08 | Crear pago con mes 2026-09 | 2026-09 | Rechazado (mes futuro) | ⏳ PENDIENTE | |
 | PAG-11 | Pago con mes >6 meses antiguo | Mes actual 2026-08 | Crear pago mes 2026-01 | 2026-01 | Rechazado (>6 meses) | ⏳ PENDIENTE | |
-| PAG-12 | Múltiples pagos parciales mismo mes | Deuda $15 (cobro $10 + $5) | Crear pagos 3, 3, 9 y aprobar | 3+3+9 | Todos se aplican FIFO; total liquidado (NO son duplicados — los cobros no son facturas) | ⏳ PENDIENTE | Regla de negocio: pagos parciales permitidos |
+| PAG-12 | Múltiples pagos parciales mismo mes | Deuda $15 (cobro $10 + $5) | Crear pagos 3, 3, 9 y aprobar | 3+3+9 | Todos se aplican FIFO; total liquidado (NO son duplicados — los cobros no son facturas) | ✅ PASADO | BD: apto 1 con 2 pagos $5 aprobados mismo mes → $10 aplicados, pending $30.02 (40.02−10); regla confirmada por usuario (pagos parciales 3+3+9 válidos) |
 | PAG-13 | Rechazo de pago con notas | Pago pendiente | Rechazar con motivo | nota | Pago `rejected`, user notificado, deuda intacta | ✅ PASÓ | QA-03 |
 | PAG-14 | Rechazo sin notas | Pago pendiente | Clic "Rechazar" sin escribir | — | Bloqueado: "Debes proporcionar una razón" | ✅ PASÓ | QA-03 |
 | PAG-15 | Pago manual (admin) | Apartamento con deuda | Dashboard → registrar pago manual | monto ≤ deuda | Deuda reducida, audit log creado | ✅ PASÓ | QA-03 (cobros individuales/parciales OK) |
@@ -81,23 +83,23 @@
 
 | ID | Caso de prueba | Precondiciones | Pasos | Datos | Resultado esperado | Estado | Notas |
 |----|----------------|----------------|-------|-------|--------------------|--------|-------|
-| DEU-01 | Generación de deuda al crear cobro | Sin deudas (BD limpia) | Crear cobro recurrente | $30/mes | Se generan deudas por apto/mes | ⏳ PENDIENTE | |
-| DEU-02 | Cálculo de pendiente tras pago parcial | Deuda $30, pago $10 aprobado | Ver dashboard | — | Pendiente = $20 | ⏳ PENDIENTE | Relacionado con PAG-07 |
-| DEU-03 | Suma de múltiples deudas del apto | 2 deudas $20 + $15 | Ver `debts.myDebts` | — | Total due $35, total pending correcto | ⏳ PENDIENTE | |
-| DEU-04 | Deuda marcada pagada al liquidar | Deuda $20, pago $20 | Ver estado | — | `isPaid=true`, badge verde | ⏳ PENDIENTE | |
-| DEU-05 | Dashboard resumen correcto | Datos mixtos | Ver stats admin | — | total/paid/pending/totalPending cuadran | ⏳ PENDIENTE | |
-| DEU-06 | Deuda de cobro individual solo al apto indicado | Cobro individual apto 3 | Ver deudas apto 3 vs apto 4 | — | Solo apto 3 tiene la deuda | ⏳ PENDIENTE | |
+| DEU-01 | Generación de deuda al crear cobro | Sin deudas (BD limpia) | Crear cobro recurrente | $30/mes | Se generan deudas por apto/mes | ✅ PASADO | 30 deudas mes 2026-08 generadas (verif. BD); FASE A COB-01 |
+| DEU-02 | Cálculo de pendiente tras pago parcial | Deuda $30, pago $10 aprobado | Ver dashboard | — | Pendiente = $20 | ✅ PASADO | Apto 1: $40.02 due − $10 pagado (2×$5 approved) = $30.02 pending (verif. BD) |
+| DEU-03 | Suma de múltiples deudas del apto | 2 deudas $20 + $15 | Ver `debts.myDebts` | — | Total due $35, total pending correcto | ✅ PASADO | Apto 1: $39.02 (35 Mant. + 4.02 VES consolidados) + $1.00 LLave individual = $40.02 (verif. BD) |
+| DEU-04 | Deuda marcada pagada al liquidar | Deuda $20, pago $20 | Ver estado | — | `isPaid=true`, badge verde | ✅ PASADO (código) | `applyPaymentToDebts` setea `isPaid:true` + pending "0.00" cuando el pago cubre la deuda (payments.ts:166-172). Sin apto liquidado 100% en BD hoy — lógica verificada |
+| DEU-05 | Dashboard resumen correcto | Datos mixtos | Ver stats admin | — | total/paid/pending/totalPending cuadran | ✅ PASADO | BD: 30 con deuda/0 pagados, totalDue $1,171.60 (29×39.02+40.02), totalPending $1,161.60 — cuadra con `computeDebtSummary` |
+| DEU-06 | Deuda de cobro individual solo al apto indicado | Cobro individual apto 3 | Ver deudas apto 3 vs apto 4 | — | Solo apto 3 tiene la deuda | ✅ PASADO | Cobro "LLave" (individual apto 1): solo apto 1 tiene $40.02, los 29 restantes $39.02 (verif. BD); FASE A COB-02 |
 
 ## 5. COBROS (COB)
 
 | ID | Caso de prueba | Precondiciones | Pasos | Datos | Resultado esperado | Estado | Notas |
 |----|----------------|----------------|-------|-------|--------------------|--------|-------|
-| COB-01 | Crear cobro recurrente | Admin | Formulario "Crear cobro" | nombre, $30 | Cobro activo + deudas generadas | ⏳ PENDIENTE | |
-| COB-02 | Crear cobro individual | Admin | Marcar "individual" + apto | apto 5 | Deuda solo apto 5 | ✅ PASÓ | QA-03 (cobro individual OK) |
+| COB-01 | Crear cobro recurrente | Admin | Formulario "Crear cobro" | nombre, $30 | Cobro activo + deudas generadas | ✅ PASÓ | FASE A COB-01: cobro $30 → 30 deudas mes (verif. BD: 30 filas 2026-08) |
+| COB-02 | Crear cobro individual | Admin | Marcar "individual" + apto | apto 5 | Deuda solo apto 5 | ✅ PASÓ | QA-03 (cobro individual OK); hoy "LLave" apto 1 solo afecta apto 1 (BD) |
 | COB-03 | Crear cobro con monto 0/negativo | Admin | Monto 0 / -50 | 0, -50 | Rechazado | 🔧 FIXEADO | BUG-001 → RE-TEST |
-| COB-04 | Editar cobro existente | 1 cobro | Cambiar monto | $30→$40 | Cobro actualizado + deuda del mes ajustada (diferencia) | 🔧 FIXEADO | COB-04 fix: updateCharge ajusta deudas del mes; alcance (individual/global/apto) INMUTABLE en edición; VES→USD en update → RE-TEST |
-| COB-05 | Eliminar cobro | 1 cobro | Eliminar | — | Cobro borrado (deudas asociadas?) | ⏳ PENDIENTE | Revisar efecto en deudas |
-| COB-06 | Cobro VES con tasa | Admin | Crear cobro en VES | 3000 VES, tasa 100 | Guardado USD 30 | ⏳ PENDIENTE | |
+| COB-04 | Editar cobro existente | 1 cobro | Cambiar monto | $30→$40 | Cobro actualizado + deuda del mes ajustada (diferencia) | ✅ PASADO + RE-TEST ✅ | COB-04 fix (4f47524): updateCharge ajusta deudas del mes; alcance INMUTABLE; VES→USD en update. RE-TEST de facto: usuario editó "Mantenimiento edif" $30→$35 → deudas subieron $5 (34.02→39.02 = 35+4.02, BD) |
+| COB-05 | Eliminar cobro | 1 cobro | Eliminar | — | Cobro borrado (deudas asociadas?) | ✅ PASÓ | BUG-003 re-test ✅ "esta perfecto": reversa + excedente→crédito; cobros inactivos en BD (Parqueo 2, eliminable, etc.) |
+| COB-06 | Cobro VES con tasa | Admin | Crear cobro en VES | 3000 VES, tasa 100 | Guardado USD 30 | ✅ PASÓ | FASE A COB-06: VES 3000 → $4.02 USD (tasa ~746); cobro "VES" activo $4.02 (BD) |
 
 ## 6. CONDOMINIO / CONFIGURACIÓN (CFG)
 
