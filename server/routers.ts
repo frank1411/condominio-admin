@@ -274,6 +274,16 @@ export const appRouter = router({
           throw new TRPCError({ code: "BAD_REQUEST", message: "El monto debe ser un número positivo mayor a cero" });
         }
 
+        // Regla de negocio: no se puede pagar más de la deuda pendiente total
+        // del apartamento (el pago se aplica FIFO a todos los meses adeudados).
+        const pendingDebt = await db.getApartmentPendingDebt(ctx.user.apartmentId);
+        if (amountNum > pendingDebt + 0.005) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `El monto (${amountNum.toFixed(2)}) excede tu deuda pendiente (${pendingDebt.toFixed(2)}). Solo puedes pagar hasta lo que debes.`
+          });
+        }
+
         const result = await db.createPayment({
           userId: ctx.user.id,
           apartmentId: ctx.user.apartmentId,

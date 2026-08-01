@@ -18,6 +18,15 @@ import { toast } from "sonner";
 export default function UserPayments() {
   const { data: payments, isLoading, refetch } = trpc.payments.myPayments.useQuery();
   const submitPayment = trpc.payments.submit.useMutation();
+  const { data: myDebts } = trpc.debts.myDebts.useQuery();
+
+  // Deuda pendiente total del apartamento (tope máximo de pago)
+  const pendingDebt =
+    (myDebts ?? []).reduce(
+      (sum: number, debt: { pendingAmount: string | null }) =>
+        sum + (parseFloat(debt.pendingAmount || "0") || 0),
+      0
+    ) || 0;
 
   const [formData, setFormData] = useState({
     month: new Date().toISOString().slice(0, 7),
@@ -52,6 +61,14 @@ export default function UserPayments() {
     const amountNum = parseFloat(formData.amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       toast.error("El monto debe ser un número positivo mayor a cero");
+      return;
+    }
+
+    // Regla de negocio: no se puede pagar más de la deuda pendiente total
+    if (amountNum > pendingDebt + 0.005) {
+      toast.error(
+        `El monto (${amountNum.toFixed(2)}) excede tu deuda pendiente (${pendingDebt.toFixed(2)}). Solo puedes pagar hasta lo que debes.`
+      );
       return;
     }
 
@@ -114,10 +131,14 @@ export default function UserPayments() {
                   type="number"
                   step="0.01"
                   min="0.01"
+                  max={pendingDebt > 0 ? pendingDebt : undefined}
                   placeholder="0.00"
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Deuda pendiente: {pendingDebt.toFixed(2)} — no puedes pagar más de lo que debes
+                </p>
               </div>
             </div>
 

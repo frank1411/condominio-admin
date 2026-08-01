@@ -65,10 +65,10 @@
 | PAG-06 | Monto no numérico | — | Enviar `abc` | abc | Bloqueado (input type=number) | ✅ PASÓ | QA-03 |
 | PAG-07 | Pago parcial (menor a deuda) | Deuda $50, pago $30 | Crear + aprobar | 30 | Deuda pendiente $20, `isPaid=false` | ❌ FALLÓ? | ⏳ PENDIENTE de reproducir |
 | PAG-08 | Pago exacto de la deuda | Deuda $50, pago $50 | Crear + aprobar | 50 | Deuda liquidada `isPaid=true` | ✅ PASÓ | QA-03 |
-| PAG-09 | Pago mayor a deuda | Deuda $50, pago $80 | Crear + aprobar | 80 | Bloqueado (excede pendiente) | ⏳ PENDIENTE | |
+| PAG-09 | Pago mayor a deuda | Deuda $50, pago $80 | Crear + aprobar | 80 | Bloqueado (excede pendiente) | 🔧 FIXEADO | MEJORA-004: validación en submit (3 capas) → RE-TEST |
 | PAG-10 | Pago en mes futuro | Mes actual 2026-08 | Crear pago con mes 2026-09 | 2026-09 | Rechazado (mes futuro) | ⏳ PENDIENTE | |
 | PAG-11 | Pago con mes >6 meses antiguo | Mes actual 2026-08 | Crear pago mes 2026-01 | 2026-01 | Rechazado (>6 meses) | ⏳ PENDIENTE | |
-| PAG-12 | Pago duplicado mismo mes/apto | 1 pago aprobado | Crear otro pago mismo mes | mismo mes | Detectar duplicado (warning/bloqueo) | ⏳ PENDIENTE | |
+| PAG-12 | Múltiples pagos parciales mismo mes | Deuda $15 (cobro $10 + $5) | Crear pagos 3, 3, 9 y aprobar | 3+3+9 | Todos se aplican FIFO; total liquidado (NO son duplicados — los cobros no son facturas) | ⏳ PENDIENTE | Regla de negocio: pagos parciales permitidos |
 | PAG-13 | Rechazo de pago con notas | Pago pendiente | Rechazar con motivo | nota | Pago `rejected`, user notificado, deuda intacta | ✅ PASÓ | QA-03 |
 | PAG-14 | Rechazo sin notas | Pago pendiente | Clic "Rechazar" sin escribir | — | Bloqueado: "Debes proporcionar una razón" | ✅ PASÓ | QA-03 |
 | PAG-15 | Pago manual (admin) | Apartamento con deuda | Dashboard → registrar pago manual | monto ≤ deuda | Deuda reducida, audit log creado | ✅ PASÓ | QA-03 (cobros individuales/parciales OK) |

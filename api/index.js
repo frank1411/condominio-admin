@@ -1094,6 +1094,15 @@ async function getAllUserDebts(userId) {
   }).from(monthlyDebts).innerJoin(apartments, drizzleEq(monthlyDebts.apartmentId, apartments.id)).where(drizzleEq(monthlyDebts.apartmentId, user.apartmentId));
   return result;
 }
+async function getApartmentPendingDebt(apartmentId) {
+  const db = await getDb();
+  if (!db) return 0;
+  const { eq: drizzleEq, sql: sql4 } = await import("drizzle-orm");
+  const result = await db.select({
+    totalPending: sql4`COALESCE(SUM(${monthlyDebts.pendingAmount}), 0)`
+  }).from(monthlyDebts).where(drizzleEq(monthlyDebts.apartmentId, apartmentId));
+  return parseFloat(result[0]?.totalPending || "0") || 0;
+}
 async function applyCreditToDebt(db, debt, apt) {
   const pending = parseFloat(debt.pendingAmount);
   if (!pending || pending <= 0) return;
@@ -1926,6 +1935,13 @@ var appRouter = router({
       const amountNum = parseFloat(input.amount);
       if (isNaN(amountNum) || amountNum <= 0) {
         throw new TRPCError3({ code: "BAD_REQUEST", message: "El monto debe ser un n\xFAmero positivo mayor a cero" });
+      }
+      const pendingDebt = await getApartmentPendingDebt(ctx.user.apartmentId);
+      if (amountNum > pendingDebt + 5e-3) {
+        throw new TRPCError3({
+          code: "BAD_REQUEST",
+          message: `El monto (${amountNum.toFixed(2)}) excede tu deuda pendiente (${pendingDebt.toFixed(2)}). Solo puedes pagar hasta lo que debes.`
+        });
       }
       const result = await createPayment({
         userId: ctx.user.id,

@@ -87,6 +87,25 @@ export async function getAllUserDebts(userId: number) {
 }
 
 /**
+ * Suma la deuda pendiente total (todos los meses sin pagar) de un apartamento.
+ * Es el tope máximo que un residente puede pagar en un solo pago.
+ */
+export async function getApartmentPendingDebt(apartmentId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const { eq: drizzleEq, sql } = await import('drizzle-orm');
+  const result = await db
+    .select({
+      totalPending: sql<string>`COALESCE(SUM(${monthlyDebts.pendingAmount}), 0)`,
+    })
+    .from(monthlyDebts)
+    .where(drizzleEq(monthlyDebts.apartmentId, apartmentId));
+
+  return parseFloat(result[0]?.totalPending || "0") || 0;
+}
+
+/**
  * Aplica el saldo a favor (crédito) del apartamento a una deuda pendiente.
  * Reduce pendingAmount con el crédito disponible, consume creditBalance y
  * marca la deuda como pagada si queda en 0.
