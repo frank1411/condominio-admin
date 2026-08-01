@@ -54,7 +54,20 @@ export default function AdminConfig() {
     e.preventDefault();
 
     try {
-      await updateConfig.mutateAsync(formData);
+      // Si la estructura ya existe, pisos/aptos son inmutables: no se envían
+      // (evita que el guard del server rechace el update por enviar valores
+      // que no se pueden cambiar — BUG-002 follow-up).
+      const payload = structureExists
+        ? {
+            name: formData.name,
+            baseFee: formData.baseFee,
+            defaultCurrency: formData.defaultCurrency,
+            exchangeRate: formData.exchangeRate,
+            reminderDay: formData.reminderDay,
+          }
+        : formData;
+
+      await updateConfig.mutateAsync(payload);
       toast.success("Configuración actualizada");
       refetch();
     } catch (error) {

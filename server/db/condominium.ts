@@ -19,14 +19,22 @@ export async function updateCondominiumConfig(data: Partial<typeof condominiumCo
   // La estructura (pisos/aptos) es inmutable una vez creada: es la base de
   // deudas, pagos y asignaciones de usuarios. Cambiarla aquí NO se refleja en
   // las tablas floors/apartments y confunde al admin (BUG-002).
+  // Solo se bloquea si el payload intenta CAMBIAR los valores; enviar los
+  // valores actuales (formulario que edita solo el nombre) no es un cambio.
   if (data.floors !== undefined || data.apartmentsPerFloor !== undefined) {
     const existingFloors = await db.select().from(floors);
     const existingApartments = await db.select().from(apartments);
     if (existingFloors.length > 0 || existingApartments.length > 0) {
-      throw new Error(
-        "La estructura del condominio ya fue creada y es inmutable. " +
-        "Para cambiar pisos o apartamentos, se requiere intervención directa en la base de datos."
-      );
+      const current = await getCondominiumConfig();
+      const wantsToChange =
+        (data.floors !== undefined && current !== null && data.floors !== current.floors) ||
+        (data.apartmentsPerFloor !== undefined && current !== null && data.apartmentsPerFloor !== current.apartmentsPerFloor);
+      if (wantsToChange) {
+        throw new Error(
+          "La estructura del condominio ya fue creada y es inmutable. " +
+          "Para cambiar pisos o apartamentos, se requiere intervención directa en la base de datos."
+        );
+      }
     }
   }
 

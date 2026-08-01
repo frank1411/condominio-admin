@@ -443,9 +443,13 @@ async function updateCondominiumConfig(data) {
     const existingFloors = await db.select().from(floors);
     const existingApartments = await db.select().from(apartments);
     if (existingFloors.length > 0 || existingApartments.length > 0) {
-      throw new Error(
-        "La estructura del condominio ya fue creada y es inmutable. Para cambiar pisos o apartamentos, se requiere intervenci\xF3n directa en la base de datos."
-      );
+      const current = await getCondominiumConfig();
+      const wantsToChange = data.floors !== void 0 && current !== null && data.floors !== current.floors || data.apartmentsPerFloor !== void 0 && current !== null && data.apartmentsPerFloor !== current.apartmentsPerFloor;
+      if (wantsToChange) {
+        throw new Error(
+          "La estructura del condominio ya fue creada y es inmutable. Para cambiar pisos o apartamentos, se requiere intervenci\xF3n directa en la base de datos."
+        );
+      }
     }
   }
   const result = await db.update(condominiumConfig).set(data).where(eq(condominiumConfig.id, 1));
