@@ -164,7 +164,13 @@ export const appRouter = router({
       .input(z.object({
         name: z.string().min(1),
         description: z.string().optional(),
-        amount: z.string(),
+        amount: z.string().refine(
+          val => {
+            const n = parseFloat(val);
+            return !isNaN(n) && n > 0;
+          },
+          { message: "El monto debe ser un número positivo mayor a cero" }
+        ),
         currency: z.enum(["USD", "VES"]).default("USD"),
         isRecurring: z.boolean().default(true),
         apartmentId: z.number().optional(),
@@ -178,6 +184,10 @@ export const appRouter = router({
         let amountInUSD = parseFloat(input.amount);
         if (input.currency === "VES" && exchangeRate > 0) {
           amountInUSD = amountInUSD / exchangeRate;
+        }
+        
+        if (isNaN(amountInUSD) || amountInUSD <= 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "El monto debe ser un número positivo mayor a cero" });
         }
         
         const result = await db.createCharge({
@@ -234,12 +244,23 @@ export const appRouter = router({
         month: z.string(), // "2026-03"
         voucherNumber: z.string().optional(),
         voucherImage: z.string().optional(), // Base64
-        amount: z.string(),
+        amount: z.string().refine(
+          val => {
+            const n = parseFloat(val);
+            return !isNaN(n) && n > 0;
+          },
+          { message: "El monto debe ser un número positivo mayor a cero" }
+        ),
         currency: z.enum(["USD", "VES"]),
       }))
       .mutation(async ({ input, ctx }) => {
         if (!ctx.user.apartmentId) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Usuario no tiene apartamento asignado" });
+        }
+
+        const amountNum = parseFloat(input.amount);
+        if (isNaN(amountNum) || amountNum <= 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "El monto debe ser un número positivo mayor a cero" });
         }
 
         const result = await db.createPayment({

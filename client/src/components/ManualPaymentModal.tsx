@@ -97,7 +97,7 @@ export function ManualPaymentModal({
               id="amount"
               type="number"
               step="0.01"
-              min="0"
+              min="0.01"
               max={pendingDebt}
               placeholder="0.00"
               value={amount}

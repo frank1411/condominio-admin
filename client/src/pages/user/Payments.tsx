@@ -49,6 +49,12 @@ export default function UserPayments() {
       return;
     }
 
+    const amountNum = parseFloat(formData.amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      toast.error("El monto debe ser un número positivo mayor a cero");
+      return;
+    }
+
     try {
       await submitPayment.mutateAsync(formData);
       toast.success("Pago enviado para revisión");
@@ -62,7 +68,11 @@ export default function UserPayments() {
       setImagePreview(null);
       refetch();
     } catch (error) {
-      toast.error("Error al enviar pago");
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Error al enviar pago";
+      toast.error(message);
     }
   };
 
@@ -103,6 +113,7 @@ export default function UserPayments() {
                 <Input
                   type="number"
                   step="0.01"
+                  min="0.01"
                   placeholder="0.00"
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}

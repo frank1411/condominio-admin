@@ -38,6 +38,12 @@ export default function AdminCharges() {
       return;
     }
 
+    const amountNum = parseFloat(formData.amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      toast.error("El monto debe ser un número positivo mayor a cero");
+      return;
+    }
+
     try {
       await createCharge.mutateAsync(formData);
       toast.success("Cobro creado exitosamente");
@@ -51,7 +57,11 @@ export default function AdminCharges() {
       });
       refetch();
     } catch (error) {
-      toast.error("Error al crear el cobro");
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Error al crear el cobro";
+      toast.error(message);
     }
   };
 
@@ -104,6 +114,7 @@ export default function AdminCharges() {
                 <Input
                   type="number"
                   step="0.01"
+                  min="0.01"
                   placeholder="0.00"
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}

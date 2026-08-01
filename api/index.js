@@ -1711,7 +1711,13 @@ var appRouter = router({
     create: adminProcedure2.input(z2.object({
       name: z2.string().min(1),
       description: z2.string().optional(),
-      amount: z2.string(),
+      amount: z2.string().refine(
+        (val) => {
+          const n = parseFloat(val);
+          return !isNaN(n) && n > 0;
+        },
+        { message: "El monto debe ser un n\xFAmero positivo mayor a cero" }
+      ),
       currency: z2.enum(["USD", "VES"]).default("USD"),
       isRecurring: z2.boolean().default(true),
       apartmentId: z2.number().optional()
@@ -1721,6 +1727,9 @@ var appRouter = router({
       let amountInUSD = parseFloat(input.amount);
       if (input.currency === "VES" && exchangeRate > 0) {
         amountInUSD = amountInUSD / exchangeRate;
+      }
+      if (isNaN(amountInUSD) || amountInUSD <= 0) {
+        throw new TRPCError3({ code: "BAD_REQUEST", message: "El monto debe ser un n\xFAmero positivo mayor a cero" });
       }
       const result = await createCharge({
         name: input.name,
@@ -1768,11 +1777,21 @@ var appRouter = router({
       voucherNumber: z2.string().optional(),
       voucherImage: z2.string().optional(),
       // Base64
-      amount: z2.string(),
+      amount: z2.string().refine(
+        (val) => {
+          const n = parseFloat(val);
+          return !isNaN(n) && n > 0;
+        },
+        { message: "El monto debe ser un n\xFAmero positivo mayor a cero" }
+      ),
       currency: z2.enum(["USD", "VES"])
     })).mutation(async ({ input, ctx }) => {
       if (!ctx.user.apartmentId) {
         throw new TRPCError3({ code: "BAD_REQUEST", message: "Usuario no tiene apartamento asignado" });
+      }
+      const amountNum = parseFloat(input.amount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        throw new TRPCError3({ code: "BAD_REQUEST", message: "El monto debe ser un n\xFAmero positivo mayor a cero" });
       }
       const result = await createPayment({
         userId: ctx.user.id,
