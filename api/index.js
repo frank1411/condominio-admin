@@ -602,7 +602,8 @@ async function createUserFromSupabase(data) {
       role: data.role ?? "user",
       isActive: true,
       approvalStatus: "pending",
-      lastSignedIn: /* @__PURE__ */ new Date()
+      lastSignedIn: /* @__PURE__ */ new Date(),
+      ...data.apartmentId ? { apartmentId: data.apartmentId } : {}
     };
     const result = await db.insert(users).values(insertData).returning();
     return result[0];
@@ -1896,6 +1897,9 @@ var appRouter = router({
     })
   }),
   apartments: router({
+    listPublic: publicProcedure.query(async () => {
+      return await getAllApartments();
+    }),
     list: protectedProcedure.query(async () => {
       return await getAllApartments();
     }),
@@ -2630,11 +2634,14 @@ async function createContext(opts) {
           user = dbUser;
         }
         if (!user) {
+          const apartmentIdRaw = supabaseUser.user_metadata?.apartmentId;
+          const apartmentId = typeof apartmentIdRaw === "number" ? apartmentIdRaw : void 0;
           const newUser = await createUserFromSupabase({
             email: supabaseUser.email,
             name: supabaseUser.user_metadata?.full_name ?? supabaseUser.email.split("@")[0],
             supabaseUserId: supabaseUser.id,
-            role: supabaseUser.user_metadata?.role ?? void 0
+            role: supabaseUser.user_metadata?.role ?? void 0,
+            apartmentId
           });
           if (newUser) {
             user = newUser;
@@ -2642,26 +2649,6 @@ async function createContext(opts) {
         }
         if (user && (!user.isActive || user.approvalStatus && user.approvalStatus !== "approved")) {
           user = null;
-        }
-        if (!user) {
-          user = {
-            id: 0,
-            openId: supabaseUser.id,
-            email: supabaseUser.email ?? "",
-            name: supabaseUser.user_metadata?.full_name ?? supabaseUser.email?.split("@")[0] ?? supabaseUser.id,
-            loginMethod: "supabase",
-            role: supabaseUser.user_metadata?.role ?? "user",
-            apartmentId: null,
-            isApproved: true,
-            approvalStatus: "approved",
-            approvedBy: null,
-            approvedAt: null,
-            rejectionReason: null,
-            isActive: true,
-            createdAt: /* @__PURE__ */ new Date(),
-            updatedAt: /* @__PURE__ */ new Date(),
-            lastSignedIn: /* @__PURE__ */ new Date()
-          };
         }
       }
     }

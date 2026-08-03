@@ -126,6 +126,10 @@ export const appRouter = router({
   }),
 
   apartments: router({
+    listPublic: publicProcedure.query(async () => {
+      return await db.getAllApartments();
+    }),
+
     list: protectedProcedure.query(async () => {
       return await db.getAllApartments();
     }),

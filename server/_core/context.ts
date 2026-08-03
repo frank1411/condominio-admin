@@ -38,11 +38,15 @@ export async function createContext(
 
         // Auto-create user on first login if not found
         if (!user) {
+          // Si el registro incluyó apartamento en el metadata, asignarlo al crear.
+          const apartmentIdRaw = supabaseUser.user_metadata?.apartmentId;
+          const apartmentId = typeof apartmentIdRaw === 'number' ? apartmentIdRaw : undefined;
           const newUser = await db.createUserFromSupabase({
             email: supabaseUser.email,
             name: supabaseUser.user_metadata?.full_name ?? supabaseUser.email.split("@")[0],
             supabaseUserId: supabaseUser.id,
             role: supabaseUser.user_metadata?.role ?? undefined,
+            apartmentId,
           });
           if (newUser) {
             user = newUser;
@@ -52,29 +56,6 @@ export async function createContext(
         // Verify user is active and approved
         if (user && (!user.isActive || (user.approvalStatus && user.approvalStatus !== 'approved'))) {
           user = null;
-        }
-
-        // Fallback: if DB lookup failed (vUser function missing or DB unavailable),
-        // create a virtual user from Supabase session data so auth.me works
-        if (!user) {
-          user = {
-            id: 0,
-            openId: supabaseUser.id,
-            email: supabaseUser.email ?? "",
-            name: supabaseUser.user_metadata?.full_name ?? supabaseUser.email?.split("@")[0] ?? supabaseUser.id,
-            loginMethod: "supabase",
-            role: (supabaseUser.user_metadata?.role as "admin" | "user") ?? "user",
-            apartmentId: null,
-            isApproved: true,
-            approvalStatus: "approved",
-            approvedBy: null,
-            approvedAt: null,
-            rejectionReason: null,
-            isActive: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            lastSignedIn: new Date(),
-          };
         }
       }
     }

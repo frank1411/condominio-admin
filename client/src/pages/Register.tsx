@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -8,18 +8,30 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Building2, Loader2 } from "lucide-react";
 import { supabase } from "@/_core/supabase";
+import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 
 export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [selectedApartmentId, setSelectedApartmentId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registered, setRegistered] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Apartamentos disponibles (endpoint público, no requiere auth)
+  const { data: apartments } = trpc.apartments.listPublic.useQuery();
 
   async function handleRegister(e?: React.FormEvent) {
     e?.preventDefault();
@@ -27,24 +39,25 @@ export default function Register() {
     setError(null);
 
     try {
+      // Construir metadata: nombre + apartamento seleccionado
+      const metadata: Record<string, unknown> = { full_name: name };
+      if (selectedApartmentId) {
+        metadata.apartmentId = Number(selectedApartmentId);
+      }
+
       const { error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            full_name: name,
-          },
-        },
+        options: { data: metadata },
       });
 
       if (authError) {
         throw authError;
       }
 
-      // La confirmación de email está activa en este proyecto: el usuario debe
-      // confirmar su correo antes del primer login. La cuenta se auto-crea en
-      // la BD (approvalStatus: pending) en el primer login vía context.ts, y
-      // el admin la aprueba y asigna apartamento desde "Solicitudes".
+      // Con autoconfirm activo en Supabase, el usuario puede iniciar sesión
+      // inmediatamente. Su cuenta queda en estado "pending" y el admin la
+      // aprueba desde "Solicitudes de Registro".
       setRegistered(true);
     } catch (err: any) {
       setError(err.message || "Error al registrarse. Intenta de nuevo.");
@@ -71,14 +84,9 @@ export default function Register() {
             </div>
             <CardTitle className="text-2xl">¡Registro exitoso!</CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              Te enviamos un correo para confirmar tu cuenta. Revisa tu bandeja
-              de entrada (y la carpeta de spam) y haz clic en el enlace de
-              confirmación.
-              <br />
-              <br />
-              Una vez confirmado, inicia sesión: tu cuenta quedará en estado
-              "pendiente" hasta que el administrador la apruebe y te asigne tu
-              apartamento.
+              Tu cuenta fue creada. Ahora puedes iniciar sesión. Tu cuenta
+              quedará en estado "pendiente" hasta que el administrador la
+              apruebe y te asigne tu apartamento.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -147,6 +155,26 @@ export default function Register() {
                   disabled={isLoading}
                   autoComplete="new-password"
                 />
+                <Select
+                  value={selectedApartmentId}
+                  onValueChange={setSelectedApartmentId}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Apartamento (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(apartments ?? []).map((apt) => (
+                      <SelectItem key={apt.id} value={apt.id.toString()}>
+                        {apt.unitName || `Apartamento ${apt.apartmentNumber}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  Selecciona tu apartamento si lo conoces. El administrador
+                  podrá cambiarlo después.
+                </p>
               </div>
             </div>
 

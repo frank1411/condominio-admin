@@ -93,6 +93,7 @@ export async function createUserFromSupabase(data: {
   name: string;
   supabaseUserId?: string;
   role?: "admin" | "user";
+  apartmentId?: number;
 }) {
   const db = await getDb();
   if (!db) {
@@ -110,6 +111,7 @@ export async function createUserFromSupabase(data: {
       isActive: true,
       approvalStatus: "pending",
       lastSignedIn: new Date(),
+      ...(data.apartmentId ? { apartmentId: data.apartmentId } : {}),
     };
 
     const result = await db.insert(users).values(insertData).returning();

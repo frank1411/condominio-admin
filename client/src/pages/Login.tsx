@@ -76,10 +76,12 @@ export default function Login() {
       } catch {
         me = null;
       }
-      if (!me) {
+      if (!me || me.approvalStatus !== "approved") {
         setError(
-          "Tu cuenta aún no está aprobada o fue desactivada por el administrador. " +
-          "Si acabas de registrarte, confirma tu correo y espera la aprobación."
+          me
+            ? "Tu cuenta está pendiente de aprobación por el administrador. " +
+              "Espera a que aprueben tu registro y te asignen un apartamento."
+            : "No se pudo verificar tu cuenta. Verifica tus credenciales e intenta de nuevo."
         );
         setIsLoading(false);
         return;
