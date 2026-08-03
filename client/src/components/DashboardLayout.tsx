@@ -43,6 +43,12 @@ const userMenuItems = [
   { icon: CreditCard, label: "Mis Pagos", path: "/pagos" },
 ];
 
+// Admin que también es residente: su vista personal (solo si tiene apartamento)
+const residentSectionItems = [
+  { icon: Home, label: "Mi Apartamento", path: "/mi-apartamento" },
+  { icon: CreditCard, label: "Mis Pagos", path: "/mi-apartamento/pagos" },
+];
+
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
@@ -127,7 +133,14 @@ function DashboardLayoutContent({
   const { data: apartments } = trpc.apartments.list.useQuery();
   const apartment = apartments?.find(apt => apt.id === user?.apartmentId);
 
-  const menuItems = user?.role === "admin" ? adminMenuItems : userMenuItems;
+  const menuItems =
+    user?.role === "admin"
+      ? [
+          ...adminMenuItems,
+          // El admin con apartamento asignado también ve su sección de residente
+          ...(user.apartmentId ? [...residentSectionItems] : []),
+        ]
+      : userMenuItems;
   const activeMenuItem = menuItems.find(item => item.path === location);
 
   useEffect(() => {
@@ -232,7 +245,7 @@ function DashboardLayoutContent({
                     <p className="text-xs text-muted-foreground truncate mt-1.5">
                       {user?.email || "-"}
                     </p>
-                    {user?.role === "user" && user?.apartmentId && apartment && (
+                    {user?.apartmentId && apartment && (
                       <p className="text-xs text-muted-foreground truncate mt-1">
                         Apto: {apartment.unitName || apartment.apartmentNumber}
                       </p>

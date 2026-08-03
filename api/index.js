@@ -2287,20 +2287,33 @@ var appRouter = router({
       return await getPendingUsers();
     }),
     approve: adminProcedure2.input(z2.object({
-      userId: z2.number()
+      userId: z2.number(),
+      apartmentId: z2.number().optional()
     })).mutation(async ({ input, ctx }) => {
-      await updateUser(input.userId, {
+      const updateData = {
         isApproved: true,
         approvalStatus: "approved",
         approvedBy: ctx.user.id,
         approvedAt: /* @__PURE__ */ new Date()
-      });
+      };
+      if (input.apartmentId) {
+        const allUsers = await getAllUsers();
+        const taken = allUsers.some((u) => u.apartmentId === input.apartmentId && u.id !== input.userId);
+        if (taken) {
+          throw new TRPCError3({
+            code: "BAD_REQUEST",
+            message: "Ese apartamento ya est\xE1 asignado a otro usuario"
+          });
+        }
+        updateData.apartmentId = input.apartmentId;
+      }
+      await updateUser(input.userId, updateData);
       await createAuditLog({
         userId: ctx.user.id,
         action: "approve_user",
         entityType: "user",
         entityId: input.userId,
-        details: "Usuario aprobado"
+        details: input.apartmentId ? `Usuario aprobado con apartamento ${input.apartmentId}` : "Usuario aprobado"
       });
       return { success: true };
     }),

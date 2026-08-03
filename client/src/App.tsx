@@ -9,6 +9,7 @@ import { useAuth } from "./_core/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import DashboardLayout from "./components/DashboardLayout";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import AuthCallback from "./pages/AuthCallback";
 
 // Lazy-loaded pages (code-split by route)
@@ -38,6 +39,11 @@ function Router() {
     return <AuthCallback />;
   }
 
+  // Public register page — always accessible, no auth needed
+  if (typeof window !== "undefined" && window.location.pathname === "/register") {
+    return <Register />;
+  }
+
   if (loading) {
     return <LoadingFallback />;
   }
@@ -59,6 +65,9 @@ function Router() {
             <Route path={"/cobros"} component={AdminCharges} />
             <Route path={"/pagos"} component={AdminPaymentReview} />
             <Route path={"/configuracion"} component={AdminConfig} />
+            {/* Admin que también es residente: su vista personal */}
+            <Route path={"/mi-apartamento"} component={UserDashboard} />
+            <Route path={"/mi-apartamento/pagos"} component={UserPayments} />
             <Route path={"/404"} component={NotFound} />
             <Route component={NotFound} />
           </Switch>

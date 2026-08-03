@@ -627,21 +627,46 @@ export const appRouter = router({
     approve: adminProcedure
       .input(z.object({
         userId: z.number(),
+        apartmentId: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        await db.updateUser(input.userId, {
+        const updateData: {
+          isApproved: boolean;
+          approvalStatus: 'approved';
+          approvedBy: number;
+          approvedAt: Date;
+          apartmentId?: number;
+        } = {
           isApproved: true,
           approvalStatus: 'approved',
           approvedBy: ctx.user.id,
           approvedAt: new Date(),
-        });
+        };
+
+        // Registro abierto: si el admin asigna apartamento al aprobar,
+        // validar que exista y que no esté asignado a otro usuario.
+        if (input.apartmentId) {
+          const allUsers = await db.getAllUsers();
+          const taken = allUsers.some(u => u.apartmentId === input.apartmentId && u.id !== input.userId);
+          if (taken) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Ese apartamento ya está asignado a otro usuario",
+            });
+          }
+          updateData.apartmentId = input.apartmentId;
+        }
+
+        await db.updateUser(input.userId, updateData);
         
         await db.createAuditLog({
           userId: ctx.user.id,
           action: "approve_user",
           entityType: "user",
           entityId: input.userId,
-          details: "Usuario aprobado",
+          details: input.apartmentId
+            ? `Usuario aprobado con apartamento ${input.apartmentId}`
+            : "Usuario aprobado",
         });
 
         return { success: true };

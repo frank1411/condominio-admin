@@ -10,6 +10,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Building2, Loader2 } from "lucide-react";
 import { supabase } from "@/_core/supabase";
+import { trpc } from "@/lib/trpc";
+import { Link } from "wouter";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -17,6 +19,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const utils = trpc.useUtils();
 
   async function handleLogin(e?: React.FormEvent) {
     e?.preventDefault();
@@ -65,6 +68,25 @@ export default function Login() {
       }
 
       console.log("[login] got token:", session.access_token.slice(0, 20) + '...');
+
+      // Distinguir visitante de "sesión válida pero cuenta sin aprobar/desactivada":
+      // auth.me devuelve null en ambos casos, pero aquí la sesión de Supabase ya
+      // existe. Si el server no devuelve usuario, la cuenta está pendiente de
+      // aprobación o fue desactivada — mostrarlo en vez de un loop al Login.
+      let me: Awaited<ReturnType<typeof utils.auth.me.fetch>> = null;
+      try {
+        me = await utils.auth.me.fetch();
+      } catch {
+        me = null;
+      }
+      if (!me) {
+        setError(
+          "Tu cuenta aún no está aprobada o fue desactivada por el administrador. " +
+          "Si acabas de registrarte, confirma tu correo y espera la aprobación."
+        );
+        setIsLoading(false);
+        return;
+      }
 
       // Full page navigation to / — this forces a full re-initialization of the app
       // so that trpc.auth.me.useQuery() mounts fresh with the Authorization header
@@ -156,6 +178,13 @@ export default function Login() {
                 "Iniciar Sesión"
               )}
             </Button>
+
+            <p className="text-sm text-gray-600 text-center">
+              ¿No tienes cuenta?{" "}
+              <Link href="/register" className="text-blue-600 hover:underline font-medium">
+                Regístrate aquí
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>
