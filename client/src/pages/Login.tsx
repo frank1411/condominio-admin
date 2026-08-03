@@ -66,7 +66,7 @@ export default function Login() {
       // supabase-js v2.110).
       let me: Awaited<ReturnType<typeof utils.auth.me.fetch>> = null;
       try {
-        const res = await fetch("/api/trpc/auth.me?batch=1", {
+        const res = await fetch("/api/trpc/auth.me", {
           headers: { authorization: `Bearer ${session.access_token}` },
         });
         const body = (await res.json()) as {
