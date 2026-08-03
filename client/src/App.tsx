@@ -2,7 +2,7 @@ import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useRoute } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAuth } from "./_core/hooks/useAuth";
@@ -33,14 +33,17 @@ function LoadingFallback() {
 
 function Router() {
   const { user, loading } = useAuth();
+  // useRoute re-renders on route changes (wouter) — critical for SPA navigation
+  const [isAuthCallback] = useRoute("/auth/callback");
+  const [isRegister] = useRoute("/register");
 
   // Auth callback page — always accessible, no auth needed
-  if (typeof window !== "undefined" && window.location.pathname === "/auth/callback") {
+  if (isAuthCallback) {
     return <AuthCallback />;
   }
 
   // Public register page — always accessible, no auth needed
-  if (typeof window !== "undefined" && window.location.pathname === "/register") {
+  if (isRegister) {
     return <Register />;
   }
 
