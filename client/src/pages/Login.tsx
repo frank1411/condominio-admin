@@ -49,30 +49,20 @@ export default function Login() {
         throw new Error("No se pudo obtener la sesión después del inicio de sesión");
       }
 
-      // Manually persist access_token to localStorage so getSupabaseAccessToken() finds it.
-      // Supabase's internal persistence may be async/deferred; this is our guarantee.
-      const projectRef = new URL(import.meta.env.VITE_SUPABASE_URL).hostname.split(".")[0];
-      const storageKey = `sb-${projectRef}-auth-token`;
-      const existingRaw = localStorage.getItem(storageKey);
-      if (existingRaw) {
-        const parsed = JSON.parse(existingRaw);
-        if (parsed?.[0] !== session.access_token) {
-          parsed[0] = session.access_token;
-          localStorage.setItem(storageKey, JSON.stringify(parsed));
-        }
-      } else {
-        localStorage.setItem(
-          storageKey,
-          JSON.stringify([session.access_token, session.refresh_token ?? null, null, null, null])
-        );
-      }
-
       console.log("[login] got token:", session.access_token.slice(0, 20) + '...');
 
       // Distinguir visitante de "sesión válida pero cuenta sin aprobar/desactivada":
       // auth.me devuelve null en ambos casos, pero aquí la sesión de Supabase ya
       // existe. Si el server no devuelve usuario, la cuenta está pendiente de
       // aprobación o fue desactivada — mostrarlo en vez de un loop al Login.
+      //
+      // NOTA: el header Authorization lo adjunta httpBatchLink vía
+      // getSupabaseAccessToken(), que ahora soporta el formato OBJETO
+      // { access_token, ... } con el que supabase-js v2.110 persiste la sesión
+      // (antes leía solo formato array por índice [0] -> header vacío -> auth.me
+      // respondía null -> falso "no aprobada"). La persistencia de supabase-js
+      // es síncrona con el await de signInWithPassword, así que el token ya está
+      // en localStorage cuando este fetch corre.
       let me: Awaited<ReturnType<typeof utils.auth.me.fetch>> = null;
       try {
         me = await utils.auth.me.fetch();

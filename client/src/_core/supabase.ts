@@ -72,7 +72,13 @@ export function getSupabaseAccessToken(): string | undefined {
     const raw = localStorage.getItem(storageKey);
     if (!raw) return undefined;
     const parsed = JSON.parse(raw);
-    return parsed?.[0] ?? undefined;
+    // supabase-js v2.110+ persiste la sesión como OBJETO { access_token, ... }.
+    // Versiones antiguas usaban un ARRAY donde [0] era el access_token.
+    // Soportar ambos formatos evita headers Authorization vacíos tras el login.
+    if (Array.isArray(parsed)) {
+      return parsed[0] ?? undefined;
+    }
+    return parsed?.access_token ?? undefined;
   } catch {
     return undefined;
   }
