@@ -1,7 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle2, DollarSign, PiggyBank } from "lucide-react";
+import { AlertCircle, PiggyBank } from "lucide-react";
 import { Loader2 } from "lucide-react";
 
 export default function UserDashboard() {
@@ -16,9 +16,7 @@ export default function UserDashboard() {
     );
   }
 
-  const totalDue = debts?.reduce((sum, d) => sum + parseFloat(d.totalDue || "0"), 0) || 0;
   const totalPending = debts?.reduce((sum, d) => sum + parseFloat(d.pendingAmount || "0"), 0) || 0;
-  const paidCount = debts?.filter(d => d.isPaid).length || 0;
   const creditBalance = debts?.[0]?.creditBalance || "0.00";
   const credit = parseFloat(creditBalance) || 0;
 
@@ -30,17 +28,7 @@ export default function UserDashboard() {
       </div>
 
       {/* Resumen */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Debido</CardTitle>
-            <DollarSign className="w-4 h-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${totalDue.toFixed(2)}</div>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pendiente de Pago</CardTitle>
@@ -48,16 +36,6 @@ export default function UserDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">${totalPending.toFixed(2)}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Meses Pagados</CardTitle>
-            <CheckCircle2 className="w-4 h-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{paidCount}</div>
           </CardContent>
         </Card>
 
