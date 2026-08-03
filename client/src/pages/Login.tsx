@@ -76,7 +76,7 @@ export default function Login() {
       } catch {
         me = null;
       }
-      if (!me || me.approvalStatus !== "approved") {
+      if (!me || !me.isActive) {
         setError(
           me
             ? "Tu cuenta aún no está activa. Espera a que el administrador la active para poder ingresar."
