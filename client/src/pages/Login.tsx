@@ -80,7 +80,7 @@ export default function Login() {
         setError(
           me
             ? "Tu cuenta aún no está activa. Espera a que el administrador la active para poder ingresar."
-            : "No se pudo verificar tu cuenta. Verifica tus credenciales e intenta de nuevo."
+            : "Tu cuenta está pendiente de activación. Si acabas de registrarte, espera a que el administrador la active."
         );
         setIsLoading(false);
         return;
