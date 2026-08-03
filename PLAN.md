@@ -192,3 +192,45 @@ Basado en auditoría integral: revisión manual + CODE_REVIEW.md (calidad) + PER
 | `CODE_REVIEW.md` | Calidad de código y arquitectura | 21 hallazgos (7 críticos, 8 medios, 6 menores) |
 | `PERFORMANCE_REVIEW.md` | Rendimiento y escalabilidad | 18 hallazgos (4 críticos, 6 altos, 5 medios, 3 bajos) |
 | `SECURITY_REVIEW.md` | Seguridad (OWASP) | 16 hallazgos (2 críticos, 3 altos, 4 medios, 3 bajos, 4 informativos) |
+
+---
+
+## Registro de Residentes + Login Fix (Agosto 2026)
+
+### Funcionalidades Implementadas
+
+| Tarea | Commit | Detalle |
+|-------|--------|---------|
+| Registro abierto (`/register`) | `b9d6aee` | Formulario público: email + password + nombre. SignUp vía Supabase Auth. Cuenta crea con `approvalStatus: pending`. |
+| Fix SPA routing (`/register`) | `e304807` | `useRoute` de wouter en App.tsx (window.location.pathname no era reactivo). |
+| Fix login bug (doble causa) | `5dc2379` | (1) `getSupabaseAccessToken()` leía `parsed[0]` pero supabase-js v2.110 guarda `{access_token}` → fix dual; (2) fetch directo con `session.access_token` sin `?batch=1` (batch envolvía respuesta en array → `body?.result` = undefined). |
+| Desactivar confirmación email | Management API | `mailer_autoconfirm: true` en Supabase — registros no requieren verificación de correo. |
+| Admin-residente (menú dinámico) | `b9d6aee` | Si admin tiene `apartmentId`, el menú agrega items de residente (`/mi-apartamento`). |
+| Selector apartamento en registro | `69d2351` | Desplegable con 30 apartamentos (PB-A…4-F) via `apartments.listPublic` (público). |
+| Usuarios nuevos INACTIVOS | `3b4d8df` | `createUserFromSupabase`: `isActive: false` por defecto. Gate de login solo verifica `isActive`. |
+| Fix mensaje login inactivo | `e5bd901` | Login.tsx verifica `!me.isActive` (no `approvalStatus`). Mensaje específico para cuentas pendientes. |
+
+### Flujo de Registro + Activación
+
+```
+Residente → /register → crea cuenta (isActive: false)
+  → puede hacer login → ve "pendiente de activación"
+Admin → Gestión de Usuarios → candado cerrado → clic para activar
+  → residente hace login → entra al dashboard
+```
+
+### Archivos Modificados (Sesión Agosto 2026)
+
+- `client/src/pages/Register.tsx` — Formulario con desplegable de apartamento
+- `client/src/pages/Login.tsx` — Verifica `isActive`, mensajes específicos
+- `client/src/App.tsx` — Ruta `/register` pública, menú admin-residente
+- `client/src/components/DashboardLayout.tsx` — Menú dinámico según apartmentId
+- `server/_core/context.ts` — Gate solo `isActive`, lee apartmentId del metadata
+- `server/routers.ts` — Endpoint `apartments.listPublic` (público)
+- `server/db/users.ts` — `createUserFromSupabase` acepta `apartmentId`, `isActive: false`
+
+### Estado BD (Post-sesión)
+
+- 30 apartamentos: PB-A…4-F, deuda $40.02 pendiente (apto 001: $31.02)
+- Usuarios: admin (id=1), 2 residentes de prueba (id=2,3), QA bug (id=4), Beatriz (id=6, inactivo)
+- Supabase: signUp habilitado, `mailer_autoconfirm: true`, email confirmation desactivada
