@@ -56,16 +56,23 @@ export default function Login() {
       // existe. Si el server no devuelve usuario, la cuenta está pendiente de
       // aprobación o fue desactivada — mostrarlo en vez de un loop al Login.
       //
-      // NOTA: el header Authorization lo adjunta httpBatchLink vía
-      // getSupabaseAccessToken(), que ahora soporta el formato OBJETO
-      // { access_token, ... } con el que supabase-js v2.110 persiste la sesión
-      // (antes leía solo formato array por índice [0] -> header vacío -> auth.me
-      // respondía null -> falso "no aprobada"). La persistencia de supabase-js
-      // es síncrona con el await de signInWithPassword, así que el token ya está
-      // en localStorage cuando este fetch corre.
+      // IMPORTANTE: consultar auth.me con el token de la sesión EN MEMORIA, no de
+      // localStorage. Tras signInWithPassword, supabase-js persiste la sesión a
+      // localStorage de forma asíncrona; si auth.me corre antes, el header
+      // Authorization (que httpBatchLink construye desde getSupabaseAccessToken())
+      // va vacío y el server responde null -> falso "cuenta no aprobada".
+      // El refresh luego sí funciona porque para entonces el token ya está
+      // persistido (y getSupabaseAccessToken() soporta el formato objeto de
+      // supabase-js v2.110).
       let me: Awaited<ReturnType<typeof utils.auth.me.fetch>> = null;
       try {
-        me = await utils.auth.me.fetch();
+        const res = await fetch("/api/trpc/auth.me?batch=1", {
+          headers: { authorization: `Bearer ${session.access_token}` },
+        });
+        const body = (await res.json()) as {
+          result?: { data?: { json?: Awaited<ReturnType<typeof utils.auth.me.fetch>> } };
+        };
+        me = body?.result?.data?.json ?? null;
       } catch {
         me = null;
       }
