@@ -53,8 +53,8 @@ export async function createContext(
           }
         }
 
-        // Verify user is active and approved
-        if (user && (!user.isActive || (user.approvalStatus && user.approvalStatus !== 'approved'))) {
+        // Verify user is active
+        if (user && !user.isActive) {
           user = null;
         }
       }

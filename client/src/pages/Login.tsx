@@ -79,8 +79,7 @@ export default function Login() {
       if (!me || me.approvalStatus !== "approved") {
         setError(
           me
-            ? "Tu cuenta está pendiente de aprobación por el administrador. " +
-              "Espera a que aprueben tu registro y te asignen un apartamento."
+            ? "Tu cuenta aún no está activa. Espera a que el administrador la active para poder ingresar."
             : "No se pudo verificar tu cuenta. Verifica tus credenciales e intenta de nuevo."
         );
         setIsLoading(false);

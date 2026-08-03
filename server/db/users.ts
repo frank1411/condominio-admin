@@ -108,7 +108,7 @@ export async function createUserFromSupabase(data: {
       name: data.name,
       loginMethod: "supabase",
       role: data.role ?? "user",
-      isActive: true,
+      isActive: false,
       approvalStatus: "pending",
       lastSignedIn: new Date(),
       ...(data.apartmentId ? { apartmentId: data.apartmentId } : {}),

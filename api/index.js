@@ -600,7 +600,7 @@ async function createUserFromSupabase(data) {
       name: data.name,
       loginMethod: "supabase",
       role: data.role ?? "user",
-      isActive: true,
+      isActive: false,
       approvalStatus: "pending",
       lastSignedIn: /* @__PURE__ */ new Date(),
       ...data.apartmentId ? { apartmentId: data.apartmentId } : {}
@@ -2647,7 +2647,7 @@ async function createContext(opts) {
             user = newUser;
           }
         }
-        if (user && (!user.isActive || user.approvalStatus && user.approvalStatus !== "approved")) {
+        if (user && !user.isActive) {
           user = null;
         }
       }
